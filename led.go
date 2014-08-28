@@ -1,0 +1,120 @@
+package main
+
+import (
+	"image"
+	"image/color"
+	"image/draw"
+	"image/gif"
+	"io"
+	"log"
+	"os"
+	"os/signal"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/tarm/goserial"
+)
+
+var CMD_WRITE_BUFFER byte = 1
+var CMD_SWAP_BUFFERS byte = 2
+
+var current byte
+
+var number int
+
+func write(image *image.RGBA, s io.ReadWriteCloser) {
+
+	//spew.Dump("writing image", image)
+
+	var frame [768]byte
+
+	for i := 0; i < len(image.Pix); i = i + 4 {
+		log.Println(i)
+		frame[i/4*3] = image.Pix[i]
+		frame[(i/4*3)+1] = image.Pix[i+1]
+		frame[(i/4*3)+2] = image.Pix[i+2]
+	}
+
+	_, err := s.Write([]byte{CMD_WRITE_BUFFER})
+	if err != nil {
+		log.Fatal("Failed writing frame", err)
+	}
+
+	_, err = s.Write(frame[:])
+	if err != nil {
+		log.Fatal("Failed writing frame", err)
+	}
+
+	_, err = s.Write([]byte{CMD_SWAP_BUFFERS})
+	if err != nil {
+		log.Fatal("Failed writing frame", err)
+	}
+
+	//log.Println("Wrote frame", n)
+}
+
+func main() {
+	gifFile, err := os.Open("fan-on.gif")
+
+	if err != nil {
+		log.Fatalf("blergh %s", err)
+	}
+
+	gif, err := gif.DecodeAll(gifFile)
+	if err != nil {
+		log.Fatalf("blergh %s", err)
+	}
+
+	/*b := gif.Bounds()
+	m := image.NewRGBA(image.Rect(0, 0, b.Dx(), b.Dy()))
+	draw.Draw(m, m.Bounds(), gif, b.Min, draw.Src)*/
+
+	m := image.NewRGBA(image.Rect(0, 0, 16, 16))
+	blue := color.RGBA{0, 0, 255, 255}
+	draw.Draw(m, m.Bounds(), &image.Uniform{blue}, image.ZP, draw.Src)
+
+	var frames = []*image.RGBA{}
+	spew.Dump(frames)
+
+	for _, frame := range gif.Image {
+		frameB := frame.Bounds()
+		frameImage := image.NewRGBA(image.Rect(0, 0, frameB.Dx(), frameB.Dy()))
+		draw.Draw(frameImage, frameImage.Bounds(), frame, frameB.Min, draw.Src)
+		frames = append(frames, frameImage)
+	}
+
+	spew.Dump(frames)
+
+	//	spew.Dump(getFrame(m))
+
+	log.Println("starting")
+	c := &serial.Config{Name: "/dev/tty.ledmatrix", Baud: 115200}
+	s, err := serial.OpenPort(c)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	go func() {
+		for {
+			//log.Println("sleeping")
+			//time.Sleep(10 * time.Millisecond)
+
+			write(frames[0], s)
+			write(frames[1], s)
+			write(frames[2], s)
+		}
+	}()
+
+	blah := make(chan os.Signal, 1)
+	signal.Notify(blah, os.Interrupt, os.Kill)
+
+	// Block until a signal is received.
+	x := <-blah
+	log.Println("Got signal:", x)
+
+	/*	buf := make([]byte, 128)
+		n, err = s.Read(buf)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Print("%q", buf[:n])*/
+}
