@@ -3,16 +3,15 @@ package led
 import (
 	"image"
 	"image/draw"
+	"log"
 	"math"
 	"time"
 
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
-var log = logger.GetLogger("PaneLayout")
-
-const WIDTH = 16
-const HEIGHT = 16
+const width = 16
+const height = 16
 
 type PaneLayout struct {
 	image       *image.RGBA
@@ -21,14 +20,18 @@ type PaneLayout struct {
 	targetPane  int
 	panes       []Pane
 	tween       *Tween
+	log         *logger.Logger
 
 	fps *Tick
 }
 
 func NewPaneLayout() *PaneLayout {
 	pane := &PaneLayout{
-		image: image.NewRGBA(image.Rect(0, 0, 16, 16)),
-		fps:   &Tick{},
+		image: image.NewRGBA(image.Rect(0, 0, width, height)),
+		fps: &Tick{
+			name: "Pane FPS",
+		},
+		log: logger.GetLogger("PaneLayout"),
 	}
 	pane.fps.start()
 	return pane
@@ -49,6 +52,7 @@ func (l *PaneLayout) IsDirty() bool {
 
 func (l *PaneLayout) Render() (*image.RGBA, error) {
 	l.fps.tick()
+
 	var position = 0
 	if l.tween != nil {
 		var done bool
@@ -60,7 +64,7 @@ func (l *PaneLayout) Render() (*image.RGBA, error) {
 		}
 	}
 
-	log.Infof("Rendering pane %d with pixel offset %d and panning to %d", l.currentPane, position, l.targetPane)
+	l.log.Infof("Rendering pane %d with pixel offset %d and panning to %d", l.currentPane, position, l.targetPane)
 
 	// Render the current image at the current position
 	currentImage, err := l.panes[l.currentPane].Render()
@@ -81,10 +85,10 @@ func (l *PaneLayout) Render() (*image.RGBA, error) {
 		var targetPosition int
 		if position < 0 {
 			// Panning right
-			targetPosition = WIDTH + position
+			targetPosition = width + position
 		} else {
 			// Panning left
-			targetPosition = position - WIDTH
+			targetPosition = position - width
 		}
 
 		draw.Draw(l.image, l.image.Bounds(), targetImage, image.Point{targetPosition, 0}, draw.Src)
@@ -111,7 +115,7 @@ func (l *PaneLayout) panBy(delta int) {
 		l.targetPane = l.targetPane - (len(l.panes) - 1)
 	}
 
-	log.Infof("panning from pane %d to %d", l.currentPane, l.targetPane)
+	l.log.Infof("panning from pane %d to %d", l.currentPane, l.targetPane)
 
 	l.tween = &Tween{
 		From:     0,
@@ -120,9 +124,9 @@ func (l *PaneLayout) panBy(delta int) {
 	}
 
 	if delta > 0 {
-		l.tween.To = WIDTH
+		l.tween.To = -width
 	} else {
-		l.tween.To = -WIDTH
+		l.tween.To = width
 	}
 
 }
@@ -154,6 +158,7 @@ func (t *Tween) Update() (int, bool) {
 
 type Tick struct {
 	count int
+	name  string
 }
 
 func (t *Tick) tick() {
@@ -164,7 +169,7 @@ func (t *Tick) start() {
 	go func() {
 		for {
 			time.Sleep(time.Second)
-			log.Infof("Ops/s %d", t.count)
+			log.Printf("%s - %d", t.name, t.count)
 			t.count = 0
 		}
 	}()

@@ -14,7 +14,7 @@ type ColorPane struct {
 func NewColorPane(colors ...color.Color) *ColorPane {
 	return &ColorPane{
 		colors: colors,
-		image:  image.NewRGBA(image.Rect(0, 0, 16, 16)),
+		image:  image.NewRGBA(image.Rect(0, 0, width, height)),
 	}
 }
 

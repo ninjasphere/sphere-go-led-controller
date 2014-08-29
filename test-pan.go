@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/sphere-go-led-controller"
 	"github.com/tarm/goserial"
 )
@@ -52,6 +53,28 @@ func write(image *image.RGBA, s io.ReadWriteCloser) {
 func main() {
 
 	layout := led.NewPaneLayout()
+
+	fanPane := led.NewOnOffPane("images/fan-off.png", "images/fan-on.gif", func(state bool) {
+		log.Printf("Fan state: %t", state)
+	})
+	layout.AddPane(fanPane)
+
+	heaterPane := led.NewOnOffPane("images/heater-off.png", "images/heater-on.gif", func(state bool) {
+		log.Printf("Heater state: %t", state)
+	})
+	layout.AddPane(heaterPane)
+
+	// Toggle fan and heater panes every second
+	go func() {
+		state := false
+		for {
+			time.Sleep(time.Second * 1)
+			state = !state
+			fanPane.SetState(state)
+			heaterPane.SetState(state)
+		}
+	}()
+
 	layout.AddPane(led.NewColorPane(color.RGBA{0, 0, 255, 255}))
 	layout.AddPane(led.NewColorPane(color.RGBA{255, 0, 0, 255}))
 	layout.AddPane(led.NewColorPane(color.RGBA{0, 255, 0, 255}))
@@ -61,24 +84,31 @@ func main() {
 	c := &serial.Config{Name: "/dev/tty.ledmatrix", Baud: 115200}
 	s, err := serial.OpenPort(c)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("No led matrix? Ignoring... %s", err)
 	}
 
 	go func() {
 		for {
+			if s == nil {
+				time.Sleep(time.Millisecond * 80)
+			}
 			//time.Sleep(time.Second / 10)
 			image, err := layout.Render()
 			if err != nil {
 				log.Fatal(err)
 			}
-			write(image, s)
+			if s != nil {
+				write(image, s)
+			} else {
+				spew.Dump(image)
+			}
 		}
 	}()
 
 	go func() {
 		for {
 			time.Sleep(time.Second * 4)
-			layout.PanRight()
+			layout.PanLeft()
 		}
 	}()
 
