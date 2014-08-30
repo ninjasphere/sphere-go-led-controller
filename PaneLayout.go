@@ -7,6 +7,7 @@ import (
 	"math"
 	"time"
 
+	"github.com/ninjasphere/driver-go-gestic/gestic"
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
@@ -34,12 +35,35 @@ func NewPaneLayout() *PaneLayout {
 		log: logger.GetLogger("PaneLayout"),
 	}
 	pane.fps.start()
+
+	gestic.ResetDevice()
+
+	reader := gestic.NewReader(logger.GetLogger("Gestic"), func(g *gestic.GestureData) {
+
+		log.Printf("Gesture %s", g.Gesture.Name())
+
+		if g.Gesture.Name() == "EastToWest" {
+			pane.PanLeft()
+		}
+
+		if g.Gesture.Name() == "WestToEast" {
+			pane.PanRight()
+		}
+
+		if pane.tween == nil {
+			pane.panes[pane.currentPane].Gesture(g)
+		}
+	})
+
+	go reader.Start()
+
 	return pane
 }
 
 type Pane interface {
 	IsDirty() bool
 	Render() (*image.RGBA, error)
+	Gesture(*gestic.GestureData)
 }
 
 func (l *PaneLayout) AddPane(pane Pane) {
@@ -68,11 +92,28 @@ func (l *PaneLayout) Render() (*image.RGBA, error) {
 
 	// Render the current image at the current position
 	currentImage, err := l.panes[l.currentPane].Render()
+
 	if err != nil {
 		return nil, err
 	}
 
-	draw.Draw(l.image, l.image.Bounds(), currentImage, image.Point{position, 0}, draw.Src)
+	if position != 0 {
+		fade := (16.00 - math.Abs(float64(position))) / 16.00
+		log.Println("Fade amount %f", fade)
+
+		faded := image.NewRGBA(image.Rect(0, 0, width, height))
+
+		for i := 0; i < len(currentImage.Pix); i = i + 4 {
+			//log.Println(i)
+			faded.Pix[i] = uint8(float64(currentImage.Pix[i]) * fade)
+			faded.Pix[i+1] = uint8(float64(currentImage.Pix[i+1]) * fade)
+			faded.Pix[i+2] = uint8(float64(currentImage.Pix[i+2]) * fade)
+		}
+
+		draw.Draw(l.image, l.image.Bounds(), faded, image.Point{0, 0}, draw.Src)
+	} else {
+		draw.Draw(l.image, l.image.Bounds(), currentImage, image.Point{position, 0}, draw.Src)
+	}
 
 	if position != 0 {
 		// We have the target pane to draw too
@@ -120,7 +161,7 @@ func (l *PaneLayout) panBy(delta int) {
 	l.tween = &Tween{
 		From:     0,
 		Start:    time.Now(),
-		Duration: time.Millisecond * 800,
+		Duration: time.Millisecond * 250,
 	}
 
 	if delta > 0 {

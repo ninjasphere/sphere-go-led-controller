@@ -9,9 +9,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/sphere-go-led-controller"
 	"github.com/tarm/goserial"
 )
@@ -32,12 +30,30 @@ func write(image *image.RGBA, s io.ReadWriteCloser) {
 		frame[(i/4*3)+2] = image.Pix[i+2]
 	}
 
+	rows := split(frame[:], 16*3)
+
+	var orderedRows [][]byte
+	for i := 0; i < 8; i++ {
+		orderedRows = append(orderedRows, rows[i+8])
+		orderedRows = append(orderedRows, rows[i])
+	}
+
+	var finalFrame []byte
+
+	for _, line := range orderedRows {
+		for i, j := 0, len(line)-1; i < j; i, j = i+1, j-1 {
+			line[i], line[j] = line[j], line[i]
+		}
+
+		finalFrame = append(finalFrame, line...)
+	}
+
 	_, err := s.Write([]byte{CMD_WRITE_BUFFER})
 	if err != nil {
 		log.Fatal("Failed writing frame", err)
 	}
 
-	_, err = s.Write(frame[:])
+	_, err = s.Write(finalFrame[:])
 	if err != nil {
 		log.Fatal("Failed writing frame", err)
 	}
@@ -48,6 +64,17 @@ func write(image *image.RGBA, s io.ReadWriteCloser) {
 	}
 
 	//log.Println("Wrote frame", n)
+}
+
+func split(a []byte, size int) [][]byte {
+	var out [][]byte
+	var i = 0
+	for i < len(a) {
+		out = append(out, a[i:i+size])
+		i += size
+	}
+
+	return out
 }
 
 func main() {
@@ -64,8 +91,13 @@ func main() {
 	})
 	layout.AddPane(heaterPane)
 
+	marioPane := led.NewOnOffPane("test/mario.gif", "test/mario.gif", func(state bool) {
+		log.Printf("Mario state: %t", state)
+	})
+	layout.AddPane(marioPane)
+
 	// Toggle fan and heater panes every second
-	go func() {
+	/*go func() {
 		state := false
 		for {
 			time.Sleep(time.Second * 1)
@@ -73,12 +105,9 @@ func main() {
 			fanPane.SetState(state)
 			heaterPane.SetState(state)
 		}
-	}()
+	}()*/
 
 	layout.AddPane(led.NewColorPane(color.RGBA{0, 0, 255, 255}))
-	layout.AddPane(led.NewColorPane(color.RGBA{255, 0, 0, 255}))
-	layout.AddPane(led.NewColorPane(color.RGBA{0, 255, 0, 255}))
-	layout.AddPane(led.NewColorPane(color.RGBA{255, 0, 255, 255}))
 
 	log.Println("starting")
 	c := &serial.Config{Name: "/dev/tty.ledmatrix", Baud: 115200}
@@ -89,28 +118,37 @@ func main() {
 
 	go func() {
 		for {
-			if s == nil {
-				time.Sleep(time.Millisecond * 80)
-			}
+			//if s == nil {
+			//}
 			//time.Sleep(time.Second / 10)
 			image, err := layout.Render()
 			if err != nil {
 				log.Fatal(err)
 			}
+
 			if s != nil {
 				write(image, s)
+
+				buf := make([]byte, 1)
+				_, err := s.Read(buf)
+				if err != nil {
+					log.Fatal(err)
+				}
+				if buf[0] != byte('F') {
+					log.Fatal("Expected an 'F', got '%q'", buf[0])
+				}
 			} else {
-				spew.Dump(image)
+				//	spew.Dump(image)
 			}
 		}
 	}()
 
-	go func() {
+	/*go func() {
 		for {
 			time.Sleep(time.Second * 4)
 			layout.PanLeft()
 		}
-	}()
+	}()*/
 
 	blah := make(chan os.Signal, 1)
 	signal.Notify(blah, os.Interrupt, os.Kill)
