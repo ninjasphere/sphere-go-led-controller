@@ -128,6 +128,7 @@ func (l *PaneLayout) Wake() {
 		To:       1,
 		Start:    time.Now(),
 		Duration: wakeDuration, // Alter duration if not starting at 0?
+		Ease:     easeOutQuint,
 	}
 	l.wake <- true
 }
@@ -264,7 +265,7 @@ func (l *PaneLayout) panBy(delta int) {
 type Tween struct {
 	From     float64
 	To       float64
-	Ease     func(value float64) float64
+	Ease     func(t float64, b float64, c float64, d float64) float64
 	Start    time.Time
 	Duration time.Duration
 }
@@ -278,12 +279,23 @@ func (t *Tween) Update() (float64, bool) {
 	}
 
 	if t.Ease != nil {
-		position = t.Ease(position)
+		position = t.Ease(0.0, t.From, position-t.From, float64(t.Duration))
 	}
 
 	value := (float64(t.To-t.From) * position) + float64(t.From)
 
 	return value, value == t.To
+}
+
+// from http://gizma.com/easing/
+// t - start time
+// b - start value
+// c - change in value
+// d - duration
+func easeOutQuint(t float64, b float64, c float64, d float64) float64 {
+	t /= d
+	t--
+	return c*(t*t*t*t*t+1) + b
 }
 
 type Tick struct {
