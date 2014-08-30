@@ -1,4 +1,4 @@
-package led
+package ui
 
 import (
 	"image"

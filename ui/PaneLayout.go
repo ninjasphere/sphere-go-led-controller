@@ -1,4 +1,4 @@
-package led
+package ui
 
 import (
 	"image"
@@ -86,11 +86,13 @@ func NewPaneLayout() (*PaneLayout, chan (bool)) {
 		if pane.fadeTween == nil {
 
 			if g.Gesture.Name() == "EastToWest" {
-				pane.PanLeft()
+				pane.panBy(1)
+				pane.log.Infof("East to west, panning by 1")
 			}
 
 			if g.Gesture.Name() == "WestToEast" {
-				pane.PanRight()
+				pane.panBy(-1)
+				pane.log.Infof("West to east, panning by -1")
 			}
 
 			if pane.panTween == nil {
@@ -233,19 +235,11 @@ func (l *PaneLayout) Render() (*image.RGBA, chan (bool), error) {
 	return frame, nil, nil
 }
 
-func (l *PaneLayout) PanLeft() {
-	l.panBy(-1)
-}
-
-func (l *PaneLayout) PanRight() {
-	l.panBy(1)
-}
-
 func (l *PaneLayout) panBy(delta int) {
 	l.currentPane = l.targetPane
 	l.targetPane += delta
 	if l.targetPane < 0 {
-		l.targetPane = len(l.panes) + l.targetPane
+		l.targetPane = (len(l.panes) - 1) + l.targetPane
 	}
 	if l.targetPane > (len(l.panes) - 1) {
 		l.targetPane = l.targetPane - (len(l.panes) - 1)
@@ -260,9 +254,9 @@ func (l *PaneLayout) panBy(delta int) {
 	}
 
 	if delta > 0 {
-		l.panTween.To = -width
-	} else {
 		l.panTween.To = width
+	} else {
+		l.panTween.To = -width
 	}
 
 }
