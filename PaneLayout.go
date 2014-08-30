@@ -14,56 +14,132 @@ import (
 const width = 16
 const height = 16
 
+const wakeDuration = time.Millisecond * 500
+const sleepTimeout = time.Second * 10
+const sleepDuration = time.Second * 3
+
 type PaneLayout struct {
-	image       *image.RGBA
-	panning     bool
 	currentPane int
 	targetPane  int
 	panes       []Pane
-	tween       *Tween
-	log         *logger.Logger
+	lastGesture time.Time
 
-	fps *Tick
+	panTween *Tween
+
+	awake     bool
+	fadeTween *Tween
+	wake      chan (bool)
+
+	log *logger.Logger
+
+	fps      *Tick
+	gestures *Tick
 }
 
-func NewPaneLayout() *PaneLayout {
+func NewPaneLayout() (*PaneLayout, chan (bool)) {
 	pane := &PaneLayout{
-		image: image.NewRGBA(image.Rect(0, 0, width, height)),
 		fps: &Tick{
 			name: "Pane FPS",
 		},
-		log: logger.GetLogger("PaneLayout"),
+		gestures: &Tick{
+			name: "Gestures/sec",
+		},
+		wake: make(chan bool),
+		log:  logger.GetLogger("PaneLayout"),
 	}
 	pane.fps.start()
+	pane.gestures.start()
 
 	gestic.ResetDevice()
 
+	firstGesture := true
+
+	// Check for sleep timeout
+	go func() {
+		for {
+			time.Sleep(time.Millisecond * 50)
+			if pane.awake && time.Since(pane.lastGesture) > sleepTimeout {
+				pane.Sleep()
+			}
+		}
+	}()
+
 	reader := gestic.NewReader(logger.GetLogger("Gestic"), func(g *gestic.GestureData) {
 
-		log.Printf("Gesture %s", g.Gesture.Name())
+		if firstGesture {
+			firstGesture = false
+			return
+		}
+		pane.gestures.tick()
 
-		if g.Gesture.Name() == "EastToWest" {
-			pane.PanLeft()
+		pane.lastGesture = time.Now()
+
+		//spew.Dump(g)
+
+		// If we're asleep, wake up
+		if !pane.awake {
+			pane.Wake()
+			return
 		}
 
-		if g.Gesture.Name() == "WestToEast" {
-			pane.PanRight()
-		}
+		// Ignore all gestures while we're fading in or out
+		if pane.fadeTween == nil {
 
-		if pane.tween == nil {
-			pane.panes[pane.currentPane].Gesture(g)
+			if g.Gesture.Name() == "EastToWest" {
+				pane.PanLeft()
+			}
+
+			if g.Gesture.Name() == "WestToEast" {
+				pane.PanRight()
+			}
+
+			if pane.panTween == nil {
+				pane.panes[pane.currentPane].Gesture(g)
+			}
 		}
 	})
 
 	go reader.Start()
 
-	return pane
+	return pane, pane.wake
 }
 
 type Pane interface {
-	IsDirty() bool
 	Render() (*image.RGBA, error)
 	Gesture(*gestic.GestureData)
+}
+
+func (l *PaneLayout) Wake() {
+
+	l.log.Infof("Waking up")
+
+	currentFade := 0.0
+
+	if l.fadeTween != nil {
+		currentFade, _ = l.fadeTween.Update()
+	}
+
+	l.awake = true
+
+	l.fadeTween = &Tween{
+		From:     currentFade,
+		To:       1,
+		Start:    time.Now(),
+		Duration: wakeDuration, // Alter duration if not starting at 0?
+	}
+	l.wake <- true
+}
+
+func (l *PaneLayout) Sleep() {
+	l.log.Infof("Going to sleep")
+	l.awake = false
+
+	l.fadeTween = &Tween{
+		From:     1,
+		To:       0,
+		Start:    time.Now(),
+		Duration: sleepDuration,
+	}
 }
 
 func (l *PaneLayout) AddPane(pane Pane) {
@@ -74,53 +150,56 @@ func (l *PaneLayout) IsDirty() bool {
 	return true
 }
 
-func (l *PaneLayout) Render() (*image.RGBA, error) {
+func (l *PaneLayout) Render() (*image.RGBA, chan (bool), error) {
+
+	frame := image.NewRGBA(image.Rect(0, 0, width, height))
+
 	l.fps.tick()
 
-	var position = 0
-	if l.tween != nil {
-		var done bool
-		position, done = l.tween.Update()
+	if l.fadeTween != nil {
+		_, done := l.fadeTween.Update()
+
 		if done {
-			l.tween = nil
+			l.fadeTween = nil
+		}
+	}
+
+	if !l.awake && l.fadeTween == nil {
+		log.Println("Sending blank frame and wake chan")
+		return frame, l.wake, nil
+	}
+
+	var position = 0
+	if l.panTween != nil {
+		var done bool
+		floatPosition, done := l.panTween.Update()
+		position = int(math.Floor(floatPosition))
+		if done {
+			l.panTween = nil
 			l.currentPane = l.targetPane
 			position = 0
 		}
 	}
 
-	l.log.Infof("Rendering pane %d with pixel offset %d and panning to %d", l.currentPane, position, l.targetPane)
+	if position != 0 {
+		l.log.Infof("Rendering pane %d with pixel offset %d and panning to %d", l.currentPane, position, l.targetPane)
+	}
 
 	// Render the current image at the current position
 	currentImage, err := l.panes[l.currentPane].Render()
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	if position != 0 {
-		fade := (16.00 - math.Abs(float64(position))) / 16.00
-		log.Println("Fade amount %f", fade)
-
-		faded := image.NewRGBA(image.Rect(0, 0, width, height))
-
-		for i := 0; i < len(currentImage.Pix); i = i + 4 {
-			//log.Println(i)
-			faded.Pix[i] = uint8(float64(currentImage.Pix[i]) * fade)
-			faded.Pix[i+1] = uint8(float64(currentImage.Pix[i+1]) * fade)
-			faded.Pix[i+2] = uint8(float64(currentImage.Pix[i+2]) * fade)
-		}
-
-		draw.Draw(l.image, l.image.Bounds(), faded, image.Point{0, 0}, draw.Src)
-	} else {
-		draw.Draw(l.image, l.image.Bounds(), currentImage, image.Point{position, 0}, draw.Src)
-	}
+	draw.Draw(frame, frame.Bounds(), currentImage, image.Point{position, 0}, draw.Src)
 
 	if position != 0 {
 		// We have the target pane to draw too
 
 		targetImage, err := l.panes[l.targetPane].Render()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		var targetPosition int
@@ -132,10 +211,26 @@ func (l *PaneLayout) Render() (*image.RGBA, error) {
 			targetPosition = position - width
 		}
 
-		draw.Draw(l.image, l.image.Bounds(), targetImage, image.Point{targetPosition, 0}, draw.Src)
+		draw.Draw(frame, frame.Bounds(), targetImage, image.Point{targetPosition, 0}, draw.Src)
 	}
 
-	return l.image, nil
+	if l.fadeTween != nil {
+		// We're fading in or out...
+
+		fade, _ := l.fadeTween.Update()
+		if fade > 1 {
+			fade = 1
+		}
+
+		for i := 0; i < len(frame.Pix); i = i + 4 {
+			//log.Println(i)
+			frame.Pix[i] = uint8(float64(frame.Pix[i]) * fade)
+			frame.Pix[i+1] = uint8(float64(frame.Pix[i+1]) * fade)
+			frame.Pix[i+2] = uint8(float64(frame.Pix[i+2]) * fade)
+		}
+	}
+
+	return frame, nil, nil
 }
 
 func (l *PaneLayout) PanLeft() {
@@ -158,41 +253,41 @@ func (l *PaneLayout) panBy(delta int) {
 
 	l.log.Infof("panning from pane %d to %d", l.currentPane, l.targetPane)
 
-	l.tween = &Tween{
+	l.panTween = &Tween{
 		From:     0,
 		Start:    time.Now(),
 		Duration: time.Millisecond * 250,
 	}
 
 	if delta > 0 {
-		l.tween.To = -width
+		l.panTween.To = -width
 	} else {
-		l.tween.To = width
+		l.panTween.To = width
 	}
 
 }
 
 type Tween struct {
-	From     int
-	To       int
+	From     float64
+	To       float64
 	Ease     func(value float64) float64
 	Start    time.Time
 	Duration time.Duration
 }
 
-func (t *Tween) Update() (int, bool) {
+func (t *Tween) Update() (float64, bool) {
 	position := float64(time.Now().Sub(t.Start)) / float64(t.Duration)
 
 	if position > 1 {
 		// we're done
-		return t.To, true
+		return float64(t.To), true
 	}
 
 	if t.Ease != nil {
 		position = t.Ease(position)
 	}
 
-	value := int(math.Floor((float64(t.To-t.From) * position) + float64(t.From)))
+	value := (float64(t.To-t.From) * position) + float64(t.From)
 
 	return value, value == t.To
 }

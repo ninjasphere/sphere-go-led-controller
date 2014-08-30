@@ -79,7 +79,7 @@ func split(a []byte, size int) [][]byte {
 
 func main() {
 
-	layout := led.NewPaneLayout()
+	layout, wake := led.NewPaneLayout()
 
 	fanPane := led.NewOnOffPane("images/fan-off.png", "images/fan-on.gif", func(state bool) {
 		log.Printf("Fan state: %t", state)
@@ -116,12 +116,14 @@ func main() {
 		log.Printf("No led matrix? Ignoring... %s", err)
 	}
 
+	<-wake
+
 	go func() {
 		for {
 			//if s == nil {
 			//}
 			//time.Sleep(time.Second / 10)
-			image, err := layout.Render()
+			image, wake, err := layout.Render()
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -139,6 +141,12 @@ func main() {
 				}
 			} else {
 				//	spew.Dump(image)
+			}
+
+			if wake != nil {
+				log.Println("Waiting as the UI is asleep")
+				<-wake
+				log.Println("UI woke up!")
 			}
 		}
 	}()

@@ -2,20 +2,21 @@ package led
 
 import (
 	"image"
-	"log"
 	"strings"
 	"time"
 
 	"github.com/ninjasphere/driver-go-gestic/gestic"
+	"github.com/ninjasphere/go-ninja/logger"
 )
 
 type OnOffPane struct {
-	state bool
+	log *logger.Logger
+
+	state         bool
+	onStateChange func(bool)
 
 	onImage  *Image
 	offImage *Image
-
-	onStateChange func(bool)
 
 	ignoringGestures bool
 }
@@ -25,17 +26,17 @@ func NewOnOffPane(onImage string, offImage string, onStateChange func(bool)) *On
 		onImage:       loadImage(onImage),
 		offImage:      loadImage(offImage),
 		onStateChange: onStateChange,
+		log:           logger.GetLogger("OnOffPane"),
 	}
 }
 
 func (p *OnOffPane) Gesture(gesture *gestic.GestureData) {
 	if p.ignoringGestures {
-		log.Println("IGNORING GESTURES")
 		return
 	}
 
 	if strings.Contains(gesture.Touch.Name(), "Tap") {
-		log.Println("GOT A TAP")
+		p.log.Infof("Tap!")
 		p.SetState(!p.state)
 
 		p.ignoringGestures = true
