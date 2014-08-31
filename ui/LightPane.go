@@ -13,6 +13,7 @@ import (
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/ninjasphere/driver-go-gestic/gestic"
 	"github.com/ninjasphere/go-ninja/channels"
+	"github.com/ninjasphere/go-ninja/devices"
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
@@ -42,26 +43,15 @@ func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool)
 		log.Fatalf("Failed to get on-off devices", err)
 	}
 
-	colorDevices, err := getChannelClients("light", "color", mqtt)
+	colorDevices, err := getChannelClients("light", "core.batching", mqtt)
 	if err != nil {
 		log.Fatalf("Failed to get on-off devices", err)
-	}
-
-	transitionDevices, err := getChannelClients("light", "transition", mqtt)
-	if err != nil {
-		log.Fatalf("Failed to get transition devices", err)
 	}
 
 	log := logger.GetLogger("LightPane")
 	log.Infof("Pane got %d on/off devices", len(onOffDevices))
 
 	log.Infof("Pane got %d color devices", len(colorDevices))
-
-	for _, device := range transitionDevices {
-
-		_ = device.Go("set", 300, nil, nil)
-
-	}
 
 	return &LightPane{
 		onImage:            loadImage(onImage),
@@ -123,10 +113,18 @@ func (p *LightPane) SetColorState(state float64) {
 
 	for _, device := range p.colorDevices {
 
-		_ = device.Go("set", &channels.ColorState{
+		colorState := &channels.ColorState{
 			Mode:       "hue",
 			Hue:        &p.colorState,
 			Saturation: &sat,
+		}
+		transition := 300
+		brightness := 1.0
+
+		_ = device.Go("setBatch", &devices.LightDeviceState{
+			Color:      colorState,
+			Transition: &transition,
+			Brightness: &brightness,
 		}, nil, nil)
 
 	}
