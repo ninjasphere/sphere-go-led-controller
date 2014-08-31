@@ -9,28 +9,39 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/ninjasphere/go-ninja"
 	"github.com/ninjasphere/sphere-go-led-controller/ui"
 	"github.com/tarm/goserial"
 )
 
 func main() {
 
+	ninja, err := ninja.Connect("sphere-led-controller")
+
+	if err != nil {
+		log.Fatalf("Failed to connect to mqtt: %s", err)
+	}
+
 	layout, wake := ui.NewPaneLayout()
+
+	mqtt := ninja.GetMqttClient()
+
+	lightPane := ui.NewLightPane("images/light-off.png", "images/light-on.png", func(state bool) {
+		log.Printf("Light on-off state: %t", state)
+	}, func(state float64) {
+		log.Printf("Light color state: %f", state)
+	}, mqtt)
+	layout.AddPane(lightPane)
 
 	fanPane := ui.NewOnOffPane("images/fan-off.png", "images/fan-on.gif", func(state bool) {
 		log.Printf("Fan state: %t", state)
-	})
+	}, mqtt, "fan")
 	layout.AddPane(fanPane)
 
 	heaterPane := ui.NewOnOffPane("images/heater-off.png", "images/heater-on.gif", func(state bool) {
 		log.Printf("Heater state: %t", state)
-	})
+	}, mqtt, "heater")
 	layout.AddPane(heaterPane)
-
-	marioPane := ui.NewOnOffPane("test/mario.gif", "test/mario.gif", func(state bool) {
-		log.Printf("Mario state: %t", state)
-	})
-	layout.AddPane(marioPane)
 
 	// Toggle fan and heater panes every second
 	/*go func() {
