@@ -1,10 +1,10 @@
 {
   "name": "sphere-go-led-controller",
   "version": "0.1.0",
-  "description": "Ninja Sphere - LED matrix Driver",
+  "description": "Ninja Sphere - LED Controller",
   "main": "sphere-go-led-controller",
-  "author": "Nick Clark <nick@ninjablocks.com>",
+  "author": "Elliot Shepherd <elliot@ninjablocks.com",
   "license": "MIT",
   "topics": {},
-  "maxMemory": 10
+  "maxMemory": 22
 }
