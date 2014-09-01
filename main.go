@@ -2,7 +2,6 @@ package main
 
 import (
 	"image"
-	"image/color"
 	"io"
 	"log"
 	"math"
@@ -54,7 +53,7 @@ func main() {
 		}
 	}()*/
 
-	layout.AddPane(ui.NewColorPane(color.RGBA{0, 0, 255, 255}))
+	//	layout.AddPane(ui.NewColorPane(color.RGBA{0, 0, 255, 255}))
 
 	log.Println("starting")
 	c := &serial.Config{Name: "/dev/tty.ledmatrix", Baud: 115200}
