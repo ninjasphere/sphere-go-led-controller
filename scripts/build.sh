@@ -2,8 +2,8 @@
 set -ex
 
 OWNER=ninjasphere
-BIN_NAME=driver-go-led-controller
-PROJECT_NAME=driver-go-led-controller
+BIN_NAME=sphere-go-led-controller
+PROJECT_NAME=sphere-go-led-controller
 
 
 # Get the parent directory of where this script is.
