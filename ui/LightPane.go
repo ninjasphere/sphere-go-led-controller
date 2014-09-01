@@ -40,10 +40,10 @@ type LightPane struct {
 
 func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool), onColorStateChange func(float64), mqtt *mqtt.MqttClient) *LightPane {
 
-	/*onOffDevices, err := getChannelClients("light", "on-off", mqtt)
+	onOffDevices, err := getChannelClients("light", "on-off", mqtt)
 	if err != nil {
 		log.Fatalf("Failed to get on-off devices", err)
-	}*/
+	}
 
 	colorDevices, err := getChannelClients("light", "core.batching", mqtt)
 	if err != nil {
@@ -61,8 +61,8 @@ func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool)
 		onOnOffStateChange: onOnOffStateChange,
 		onColorStateChange: onColorStateChange,
 		log:                log,
-		//onOffDevices:       onOffDevices,
-		colorDevices: colorDevices,
+		onOffDevices:       onOffDevices,
+		colorDevices:       colorDevices,
 	}
 }
 
@@ -114,6 +114,12 @@ func (p *LightPane) SetColorState(state float64) {
 
 func (p *LightPane) SendOnOffToDevices() {
 
+	if p.onOffState {
+		p.log.Infof("Turning lights on")
+	} else {
+		p.log.Infof("Turning lights off")
+	}
+
 	for _, device := range p.onOffDevices {
 
 		timeout := make(chan bool, 1)
@@ -162,6 +168,7 @@ func (p *LightPane) SendColorToDevices() {
 		reply := make(chan *rpc.Call, 1)
 
 		_ = device.Go("setBatch", &devices.LightDeviceState{
+			OnOff:      &p.onOffState,
 			Color:      colorState,
 			Transition: &transition,
 			Brightness: &brightness,
