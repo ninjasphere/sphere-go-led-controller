@@ -240,10 +240,10 @@ func (l *PaneLayout) panBy(delta int) {
 	l.currentPane = l.targetPane
 	l.targetPane += delta
 	if l.targetPane < 0 {
-		l.targetPane = (len(l.panes) - 1) + l.targetPane
+		l.targetPane = (len(l.panes) - 1)
 	}
 	if l.targetPane > (len(l.panes) - 1) {
-		l.targetPane = l.targetPane - (len(l.panes) - 1)
+		l.targetPane = 0
 	}
 
 	l.log.Infof("panning from pane %d to %d", l.currentPane, l.targetPane)
