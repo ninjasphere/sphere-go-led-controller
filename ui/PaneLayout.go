@@ -311,7 +311,7 @@ func (t *Tick) start() {
 	go func() {
 		for {
 			time.Sleep(time.Second)
-			log.Printf("%s - %d", t.name, t.count)
+			//log.Printf("%s - %d", t.name, t.count)
 			t.count = 0
 		}
 	}()
