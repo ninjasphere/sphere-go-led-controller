@@ -114,7 +114,7 @@ func getChannelIds(thingType string, protocol string, rpcClient *rpc.Client) ([]
 
 	var things []model.Thing
 
-	call, err := rpcClient.Call("$home/services/ThingModel", "fetchByType", thingType, &things)
+	call, err := rpcClient.Call("$home/services/ThingModel", "fetchByType", []interface{}{thingType}, &things)
 	//err = client.Call("fetch", "c7ac05e0-9999-4d93-bfe3-a0b4bb5e7e78", &thing)
 
 	if err != nil {
@@ -139,7 +139,7 @@ func getChannelIds(thingType string, protocol string, rpcClient *rpc.Client) ([]
 
 func getChannelTopic(thing *model.Thing, protocol string) string {
 
-	for _, channel := range thing.Device.Channels {
+	for _, channel := range *thing.Device.Channels {
 		if channel.Protocol == protocol {
 			return "$device/" + thing.Device.Guid + "/channel/" + channel.ID + "/" + protocol
 		}
