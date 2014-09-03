@@ -14,15 +14,17 @@ import (
 const width = 16
 const height = 16
 
-const wakeDuration = time.Millisecond * 500
+const panDuration = time.Millisecond * 350
+const wakeDuration = time.Millisecond * 750
 const sleepTimeout = time.Second * 10
 const sleepDuration = time.Second * 3
 
 type PaneLayout struct {
-	currentPane int
-	targetPane  int
-	panes       []Pane
-	lastGesture time.Time
+	currentPane  int
+	targetPane   int
+	panes        []Pane
+	firstGesture bool
+	lastGesture  time.Time
 
 	panTween *Tween
 
@@ -36,7 +38,7 @@ type PaneLayout struct {
 	gestures *Tick
 }
 
-func NewPaneLayout() (*PaneLayout, chan (bool)) {
+func NewPaneLayout(fakeGestures bool) (*PaneLayout, chan (bool)) {
 	pane := &PaneLayout{
 		fps: &Tick{
 			name: "Pane FPS",
@@ -46,13 +48,17 @@ func NewPaneLayout() (*PaneLayout, chan (bool)) {
 		},
 		wake: make(chan bool),
 		log:  logger.GetLogger("PaneLayout"),
+
+		firstGesture: true,
 	}
 	pane.fps.start()
 	pane.gestures.start()
 
-	gestic.ResetDevice()
-
-	firstGesture := true
+	if !fakeGestures {
+		gestic.ResetDevice()
+		reader := gestic.NewReader(logger.GetLogger("Gestic"), pane.OnGesture)
+		go reader.Start()
+	}
 
 	// Check for sleep timeout
 	go func() {
@@ -64,44 +70,27 @@ func NewPaneLayout() (*PaneLayout, chan (bool)) {
 		}
 	}()
 
-	reader := gestic.NewReader(logger.GetLogger("Gestic"), func(g *gestic.GestureData) {
-
-		if firstGesture {
-			firstGesture = false
-			return
-		}
-		pane.gestures.tick()
-
-		pane.lastGesture = time.Now()
-
-		//spew.Dump(g)
-
-		// If we're asleep, wake up
-		if !pane.awake {
-			pane.Wake()
-			return
-		}
-
-		// Ignore all gestures while we're fading in or out
-		if pane.fadeTween == nil {
-
-			if g.Gesture.Name() == "EastToWest" {
-				pane.panBy(1)
-				pane.log.Infof("East to west, panning by 1")
+	if fakeGestures {
+		go func() {
+			for {
+				time.Sleep(time.Millisecond * 5000)
+				gesture := gestic.NewGestureData()
+				gesture.Gesture.GestureVal = 2
+				pane.OnGesture(gesture)
 			}
+		}()
 
-			if g.Gesture.Name() == "WestToEast" {
-				pane.panBy(-1)
-				pane.log.Infof("West to east, panning by -1")
+		go func() {
+			for {
+				time.Sleep(time.Millisecond * 10)
+				gesture := gestic.NewGestureData()
+				gesture.Coordinates.X = 100
+				gesture.Coordinates.Y = 100
+				gesture.Coordinates.Z = 100
+				pane.OnGesture(gesture)
 			}
-
-			if pane.panTween == nil {
-				pane.panes[pane.currentPane].Gesture(g)
-			}
-		}
-	})
-
-	go reader.Start()
+		}()
+	}
 
 	return pane, pane.wake
 }
@@ -131,6 +120,43 @@ func (l *PaneLayout) Wake() {
 		Ease:     easeOutQuint,
 	}
 	l.wake <- true
+}
+
+func (l *PaneLayout) OnGesture(g *gestic.GestureData) {
+
+	if l.firstGesture {
+		l.firstGesture = false
+		return
+	}
+	l.gestures.tick()
+
+	l.lastGesture = time.Now()
+
+	//spew.Dump(g)
+
+	// If we're asleep, wake up
+	if !l.awake {
+		l.Wake()
+		return
+	}
+
+	// Ignore all gestures while we're fading in or out
+	if l.fadeTween == nil {
+
+		if g.Gesture.Name() == "EastToWest" {
+			l.panBy(1)
+			l.log.Infof("East to west, panning by 1")
+		}
+
+		if g.Gesture.Name() == "WestToEast" {
+			l.panBy(-1)
+			l.log.Infof("West to east, panning by -1")
+		}
+
+		if l.panTween == nil {
+			go l.panes[l.currentPane].Gesture(g)
+		}
+	}
 }
 
 func (l *PaneLayout) Sleep() {
@@ -251,7 +277,7 @@ func (l *PaneLayout) panBy(delta int) {
 	l.panTween = &Tween{
 		From:     0,
 		Start:    time.Now(),
-		Duration: time.Millisecond * 250,
+		Duration: panDuration,
 	}
 
 	if delta > 0 {

@@ -5,16 +5,16 @@ import (
 	"image/color"
 	"image/draw"
 	"log"
-	"net/rpc"
 	"strings"
 	"time"
 
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/ninjasphere/driver-go-gestic/gestic"
 	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-ninja/devices"
 	"github.com/ninjasphere/go-ninja/logger"
+
+	"github.com/ninjasphere/go-ninja/rpc3"
 )
 
 var onOffRate = &throttle{delay: time.Millisecond * 250}
@@ -24,9 +24,10 @@ const colorRotateSpeed = 0.0015
 
 type LightPane struct {
 	log *logger.Logger
+	rpc *rpc.Client
 
-	onOffDevices []*rpc.Client
-	colorDevices []*rpc.Client
+	onOffDevices []string
+	colorDevices []string
 
 	onOffState         bool
 	onOnOffStateChange func(bool)
@@ -38,14 +39,14 @@ type LightPane struct {
 	offImage *Image
 }
 
-func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool), onColorStateChange func(float64), mqtt *mqtt.MqttClient) *LightPane {
+func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool), onColorStateChange func(float64), rpcClient *rpc.Client) *LightPane {
 
-	onOffDevices, err := getChannelClients("light", "on-off", mqtt)
+	onOffDevices, err := getChannelIds("light", "on-off", rpcClient)
 	if err != nil {
 		log.Fatalf("Failed to get on-off devices", err)
 	}
 
-	colorDevices, err := getChannelClients("light", "core.batching", mqtt)
+	colorDevices, err := getChannelIds("light", "core.batching", rpcClient)
 	if err != nil {
 		log.Fatalf("Failed to get on-off devices", err)
 	}
@@ -63,6 +64,7 @@ func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool)
 		log:                log,
 		onOffDevices:       onOffDevices,
 		colorDevices:       colorDevices,
+		rpc:                rpcClient,
 	}
 }
 
@@ -122,25 +124,10 @@ func (p *LightPane) SendOnOffToDevices() {
 
 	for _, device := range p.onOffDevices {
 
-		timeout := make(chan bool, 1)
-		go func() {
-			time.Sleep(3 * time.Second)
-			timeout <- true
-		}()
-
-		reply := make(chan *rpc.Call, 1)
-
 		if p.onOffState {
-			_ = device.Go("turnOn", nil, nil, reply)
+			p.rpc.Call(device, "turnOn", nil, nil)
 		} else {
-			_ = device.Go("turnOff", nil, nil, reply)
-		}
-
-		select {
-		case call := <-reply:
-			p.log.Infof("Got Reply with error %s", call.Error)
-		case <-timeout:
-			p.log.Infof("Setbatch timed out")
+			p.rpc.Call(device, "turnOff", nil, nil)
 		}
 
 	}
@@ -159,27 +146,12 @@ func (p *LightPane) SendColorToDevices() {
 		transition := 500
 		brightness := 1.0
 
-		timeout := make(chan bool, 1)
-		go func() {
-			time.Sleep(3 * time.Second)
-			timeout <- true
-		}()
-
-		reply := make(chan *rpc.Call, 1)
-
-		_ = device.Go("setBatch", &devices.LightDeviceState{
+		p.rpc.Call(device, "setBatch", &devices.LightDeviceState{
 			OnOff:      &p.onOffState,
 			Color:      colorState,
 			Transition: &transition,
 			Brightness: &brightness,
-		}, nil, reply)
-
-		select {
-		case call := <-reply:
-			p.log.Infof("Got Reply with error %s", call.Error)
-		case <-timeout:
-			p.log.Infof("Setbatch timed out")
-		}
+		}, nil)
 
 	}
 }

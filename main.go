@@ -8,38 +8,56 @@ import (
 	"os"
 	"os/signal"
 
+	//"net/http"
+
 	"github.com/ninjasphere/go-ninja"
 	"github.com/ninjasphere/sphere-go-led-controller/ui"
 	"github.com/tarm/goserial"
 )
 
+//import _ "net/http/pprof"
+
+const drivername = "sphere-led-controller"
+
 func main() {
 
-	ninja, err := ninja.Connect("sphere-led-controller")
+	/*	go func() {
+		log.Printf("WOOOO")
+		log.Println(http.ListenAndServe(":6060", nil))
+	}()*/
+
+	conn, err := ninja.Connect(drivername)
 
 	if err != nil {
 		log.Fatalf("Failed to connect to mqtt: %s", err)
 	}
 
-	layout, wake := ui.NewPaneLayout()
+	statusJob, err := ninja.CreateStatusJob(conn, drivername)
+	if err != nil {
+		log.Fatalf("Could not setup status job: %s", err)
+	}
 
-	mqtt := ninja.GetMqttClient()
+	statusJob.Start()
+
+	layout, wake := ui.NewPaneLayout(false)
+
+	rpcClient := conn.GetRPCClient()
 
 	lightPane := ui.NewLightPane("images/light-off.png", "images/light-on.png", func(state bool) {
 		log.Printf("Light on-off state: %t", state)
 	}, func(state float64) {
 		log.Printf("Light color state: %f", state)
-	}, mqtt)
+	}, rpcClient)
 	layout.AddPane(lightPane)
 
 	fanPane := ui.NewOnOffPane("images/fan-off.png", "images/fan-on.gif", func(state bool) {
 		log.Printf("Fan state: %t", state)
-	}, mqtt, "fan")
+	}, rpcClient, "fan")
 	layout.AddPane(fanPane)
 
 	heaterPane := ui.NewOnOffPane("images/heater-off.png", "images/heater-on.gif", func(state bool) {
 		log.Printf("Heater state: %t", state)
-	}, mqtt, "heater")
+	}, rpcClient, "heater")
 	layout.AddPane(heaterPane)
 
 	// Toggle fan and heater panes every second

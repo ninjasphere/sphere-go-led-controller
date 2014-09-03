@@ -6,13 +6,12 @@ import (
 	"image/gif"
 	"image/png"
 	"log"
-	"net/rpc"
 	"os"
 	"strings"
 
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ninjasphere/go-ninja/rpc2"
+	"github.com/ninjasphere/go-ninja/model"
+	"github.com/ninjasphere/go-ninja/rpc3"
 )
 
 type Image struct {
@@ -88,6 +87,7 @@ func toRGBA(in image.Image) *image.RGBA {
 	return out
 }
 
+/*
 type Thing struct {
 	Name   string `json:"name"`
 	ID     string `json:"id"`
@@ -106,56 +106,44 @@ type Channel struct {
 	Protocol string `json:"protocol"`
 	Name     string `json:"channel"`
 	ID       string `json:"id"`
-}
+}*/
 
-func getChannelClients(thingType string, protocol string, mqtt *mqtt.MqttClient) ([]*rpc.Client, error) {
-	// You need to export the mqtt connection here if you want to test it.
-	client, err := rpc2.GetClient("$home/services/ThingModel", mqtt)
-
-	if err != nil {
-		log.Fatalf("Failed getting rpc2 client %s", err)
-	}
+func getChannelIds(thingType string, protocol string, rpcClient *rpc.Client) ([]string, error) {
 
 	//time.Sleep(time.Second * 3)
 
-	var things []Thing
+	var things []model.Thing
 
-	err = client.Call("fetchByType", thingType, &things)
+	call, err := rpcClient.Call("$home/services/ThingModel", "fetchByType", thingType, &things)
 	//err = client.Call("fetch", "c7ac05e0-9999-4d93-bfe3-a0b4bb5e7e78", &thing)
 
 	if err != nil {
-		log.Fatalf("Failed calling fetch method: %s", err)
+		log.Fatalf("Failed calling fetchByType method: %s", err)
 	}
 
-	log.Printf("Done")
+	<-call.Done
 	spew.Dump(things)
 
-	var clients []*rpc.Client
+	var topics []string
 
 	for _, thing := range things {
-		client, err := getChannelClient(&thing, protocol, mqtt)
-		if err != nil {
-			log.Fatalf("Failed getting %s client for thing %s: %s", protocol, thing.ID, err)
-		}
 
-		if client != nil {
-			log.Printf("Found %s on thing %s", protocol, thing.ID)
-			clients = append(clients, client)
-			//	_ = onOffClient.Go("turnOn", nil, nil, nil)
-
+		// Handle more than one channel with same protocol
+		thingTopic := getChannelTopic(&thing, protocol)
+		if thingTopic != "" {
+			topics = append(topics, thingTopic)
 		}
 	}
-	return clients, nil
+	return topics, nil
 }
 
-func getChannelClient(thing *Thing, protocol string, mqtt *mqtt.MqttClient) (*rpc.Client, error) {
+func getChannelTopic(thing *model.Thing, protocol string) string {
 
 	for _, channel := range thing.Device.Channels {
 		if channel.Protocol == protocol {
-			topic := "$device/" + thing.Device.Guid + "/channel/" + channel.ID + "/" + protocol
-			return rpc2.GetClient(topic, mqtt)
+			return "$device/" + thing.Device.Guid + "/channel/" + channel.ID + "/" + protocol
 		}
 	}
 
-	return nil, nil
+	return ""
 }

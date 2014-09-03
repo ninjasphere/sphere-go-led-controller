@@ -3,19 +3,19 @@ package ui
 import (
 	"image"
 	"log"
-	"net/rpc"
 	"strings"
 	"time"
 
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/ninjasphere/driver-go-gestic/gestic"
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/go-ninja/rpc3"
 )
 
 type OnOffPane struct {
 	log *logger.Logger
+	rpc *rpc.Client
 
-	devices []*rpc.Client
+	devices []string
 
 	state         bool
 	onStateChange func(bool)
@@ -26,11 +26,11 @@ type OnOffPane struct {
 	ignoringGestures bool
 }
 
-func NewOnOffPane(offImage string, onImage string, onStateChange func(bool), mqtt *mqtt.MqttClient, thingType string) *OnOffPane {
+func NewOnOffPane(offImage string, onImage string, onStateChange func(bool), rpcClient *rpc.Client, thingType string) *OnOffPane {
 
-	devices, err := getChannelClients(thingType, "on-off", mqtt)
+	devices, err := getChannelIds(thingType, "on-off", rpcClient)
 	if err != nil {
-		log.Fatalf("Failed to get on-off devices", err)
+		log.Fatalf("Failed to get %s devices: %s", err, err)
 	}
 
 	log := logger.GetLogger("OnOffPane")
@@ -42,6 +42,7 @@ func NewOnOffPane(offImage string, onImage string, onStateChange func(bool), mqt
 		onStateChange: onStateChange,
 		log:           log,
 		devices:       devices,
+		rpc:           rpcClient,
 	}
 }
 
@@ -68,9 +69,9 @@ func (p *OnOffPane) SetState(state bool) {
 	p.state = state
 	for _, device := range p.devices {
 		if state {
-			_ = device.Go("turnOn", nil, nil, nil)
+			p.rpc.Call(device, "turnOn", nil, nil)
 		} else {
-			_ = device.Go("turnOff", nil, nil, nil)
+			p.rpc.Call(device, "turnOff", nil, nil)
 		}
 	}
 	p.onStateChange(state)
