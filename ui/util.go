@@ -11,7 +11,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/model"
-	"github.com/ninjasphere/go-ninja/rpc3"
+	"github.com/ninjasphere/go-ninja/rpc"
 )
 
 type Image struct {

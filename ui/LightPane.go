@@ -13,8 +13,7 @@ import (
 	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-ninja/devices"
 	"github.com/ninjasphere/go-ninja/logger"
-
-	"github.com/ninjasphere/go-ninja/rpc3"
+	"github.com/ninjasphere/go-ninja/rpc"
 )
 
 var onOffRate = &throttle{delay: time.Millisecond * 250}
