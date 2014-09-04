@@ -26,7 +26,7 @@ export GOPATH="$(pwd)/.gopath"
 
 if [ ! -d $GOPATH/src/github.com/ninjasphere/go-ninja ]; then
 	# Clone our internal commons package
-	git clone -b 'rpc2' git@github.com:ninjasphere/go-ninja.git $GOPATH/src/github.com/ninjasphere/go-ninja
+	git clone git@github.com:ninjasphere/go-ninja.git $GOPATH/src/github.com/ninjasphere/go-ninja
 fi
 
 if [ ! -d $GOPATH/src/github.com/ninjasphere/github.com/ninjasphere/driver-go-gestic ]; then
