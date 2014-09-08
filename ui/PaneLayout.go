@@ -14,17 +14,17 @@ import (
 const width = 16
 const height = 16
 
+const ignoreFirstGestureAfterDuration = time.Second
 const panDuration = time.Millisecond * 350
-const wakeDuration = time.Millisecond * 750
+const wakeTransitionDuration = time.Millisecond * 1
 const sleepTimeout = time.Second * 10
-const sleepDuration = time.Second * 3
+const sleepTransitionDuration = time.Second * 3
 
 type PaneLayout struct {
-	currentPane  int
-	targetPane   int
-	panes        []Pane
-	firstGesture bool
-	lastGesture  time.Time
+	currentPane int
+	targetPane  int
+	panes       []Pane
+	lastGesture time.Time
 
 	panTween *Tween
 
@@ -48,8 +48,6 @@ func NewPaneLayout(fakeGestures bool) (*PaneLayout, chan (bool)) {
 		},
 		wake: make(chan bool),
 		log:  logger.GetLogger("PaneLayout"),
-
-		firstGesture: true,
 	}
 	pane.fps.start()
 	pane.gestures.start()
@@ -116,7 +114,7 @@ func (l *PaneLayout) Wake() {
 		From:     currentFade,
 		To:       1,
 		Start:    time.Now(),
-		Duration: wakeDuration, // Alter duration if not starting at 0?
+		Duration: wakeTransitionDuration, // Alter duration if not starting at 0?
 		Ease:     easeOutQuint,
 	}
 	l.wake <- true
@@ -124,13 +122,21 @@ func (l *PaneLayout) Wake() {
 
 func (l *PaneLayout) OnGesture(g *gestic.GestureData) {
 
-	if l.firstGesture {
-		l.firstGesture = false
-		return
+	// Always skip the first gesture if we haven't had any for ignoreFirstGestureAfterDuration
+	skip := false
+
+	if time.Now().Sub(l.lastGesture) > ignoreFirstGestureAfterDuration {
+		log.Printf("Ignoring first gesture")
+		skip = true
 	}
+
 	l.gestures.tick()
 
 	l.lastGesture = time.Now()
+
+	if skip {
+		return
+	}
 
 	//spew.Dump(g)
 
@@ -167,7 +173,7 @@ func (l *PaneLayout) Sleep() {
 		From:     1,
 		To:       0,
 		Start:    time.Now(),
-		Duration: sleepDuration,
+		Duration: sleepTransitionDuration,
 	}
 }
 
