@@ -43,6 +43,17 @@ func main() {
 
 	rpcClient := conn.GetRPCClient()
 
+	if len(os.Getenv("CERTIFICATION")) > 0 {
+		layout.AddPane(ui.NewCertPane(conn.GetMqttClient()))
+	} else {
+		layout.AddPane(ui.NewTextScrollPane("Exit Music (For A Film)"))
+
+		heaterPane := ui.NewOnOffPane("images/heater-off.png", "images/heater-on.gif", func(state bool) {
+			log.Printf("Heater state: %t", state)
+		}, rpcClient, "heater")
+		layout.AddPane(heaterPane)
+	}
+
 	lightPane := ui.NewLightPane("images/light-off.png", "images/light-on.png", func(state bool) {
 		log.Printf("Light on-off state: %t", state)
 	}, func(state float64) {
@@ -54,11 +65,6 @@ func main() {
 		log.Printf("Fan state: %t", state)
 	}, rpcClient, "fan")
 	layout.AddPane(fanPane)
-
-	heaterPane := ui.NewOnOffPane("images/heater-off.png", "images/heater-on.gif", func(state bool) {
-		log.Printf("Heater state: %t", state)
-	}, rpcClient, "heater")
-	layout.AddPane(heaterPane)
 
 	// Toggle fan and heater panes every second
 	/*go func() {
