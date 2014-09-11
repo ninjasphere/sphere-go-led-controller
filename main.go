@@ -46,7 +46,7 @@ func main() {
 	if len(os.Getenv("CERTIFICATION")) > 0 {
 		layout.AddPane(ui.NewCertPane(conn.GetMqttClient()))
 	} else {
-		layout.AddPane(ui.NewTextScrollPane("Exit Music (For A Film)"))
+		//layout.AddPane(ui.NewTextScrollPane("Exit Music (For A Film)"))
 
 		heaterPane := ui.NewOnOffPane("images/heater-off.png", "images/heater-on.gif", func(state bool) {
 			log.Printf("Heater state: %t", state)
