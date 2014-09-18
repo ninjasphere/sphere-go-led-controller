@@ -6,6 +6,7 @@ import (
 	"image/gif"
 	"image/png"
 	"log"
+	"math"
 	"os"
 	"strings"
 
@@ -15,16 +16,30 @@ import (
 )
 
 type Image struct {
-	frame  int
+	pos    int
 	frames []*image.RGBA
 }
 
-func (i *Image) GetFrame() *image.RGBA {
-	i.frame++
-	if i.frame >= len(i.frames) {
-		i.frame = 0
+func (i *Image) GetNextFrame() *image.RGBA {
+	i.pos++
+	if i.pos >= len(i.frames) {
+		i.pos = 0
 	}
-	return i.frames[i.frame]
+	return i.frames[i.pos]
+}
+
+// GetPositionFrame returns the frame corresponding to the position given 0....1
+func (i *Image) GetPositionFrame(position float64) *image.RGBA {
+	frameNumber := math.Min(float64(len(i.frames)-1), math.Floor(position*float64(len(i.frames))))
+	return i.frames[int(frameNumber)]
+}
+
+func (i *Image) GetNumFrames() int {
+	return len(i.frames)
+}
+
+func (i *Image) GetFrame(frame int) *image.RGBA {
+	return i.frames[frame]
 }
 
 func loadImage(src string) *Image {

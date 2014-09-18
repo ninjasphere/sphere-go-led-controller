@@ -43,6 +43,9 @@ func main() {
 
 	rpcClient := conn.GetRPCClient()
 
+	mediaPane := ui.NewMediaPane("images/media-volume-speaker.gif", "images/media-volume-mute.png", rpcClient, "fan")
+	layout.AddPane(mediaPane)
+
 	if len(os.Getenv("CERTIFICATION")) > 0 {
 		layout.AddPane(ui.NewCertPane(conn.GetMqttClient()))
 	} else {

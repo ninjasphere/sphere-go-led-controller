@@ -79,9 +79,9 @@ func (p *OnOffPane) SetState(state bool) {
 
 func (p *OnOffPane) Render() (*image.RGBA, error) {
 	if p.state {
-		return p.onImage.GetFrame(), nil
+		return p.onImage.GetNextFrame(), nil
 	}
-	return p.offImage.GetFrame(), nil
+	return p.offImage.GetNextFrame(), nil
 }
 
 func (p *OnOffPane) IsDirty() bool {

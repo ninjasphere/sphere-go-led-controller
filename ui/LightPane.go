@@ -69,8 +69,6 @@ func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool)
 
 func (p *LightPane) Gesture(gesture *gestic.GestureData) {
 
-	//if gesture.Coordinates.X > 0 && gesture.Coordinates.Y > 0 && gesture.Coordinates.Z > 0 {
-
 	col := p.colorState + colorRotateSpeed
 	if col >= 1 {
 		col = 0
@@ -85,8 +83,6 @@ func (p *LightPane) Gesture(gesture *gestic.GestureData) {
 	} else {
 		//p.log.Infof("Ignoring Color wheel... Remaining time: %d\n", remaining)
 	}
-
-	//	}
 
 	if strings.Contains(gesture.Touch.Name(), "Tap") {
 		if onOffRate.try() {
@@ -164,9 +160,9 @@ func (p *LightPane) Render() (*image.RGBA, error) {
 
 	var frame *image.RGBA
 	if p.onOffState {
-		frame = p.onImage.GetFrame()
+		frame = p.onImage.GetNextFrame()
 	} else {
-		frame = p.offImage.GetFrame()
+		frame = p.offImage.GetNextFrame()
 	}
 
 	draw.Draw(canvas, canvas.Bounds(), frame, image.ZP, draw.Over)
