@@ -1,3 +1,4 @@
+#!/bin/bash
 stop sphere-leds || true
 stop devkit-status-led || true
 echo 7 > /sys/kernel/debug/omap_mux/gpmc_a0 # RST
