@@ -8,7 +8,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/ninjasphere/driver-go-gestic/gestic"
+	"github.com/ninjasphere/go-gestic"
 	"github.com/ninjasphere/sphere-go-led-controller/fonts/O4b03b"
 )
 
