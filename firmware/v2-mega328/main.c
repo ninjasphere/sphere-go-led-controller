@@ -12,6 +12,8 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#define VERSION "1.0.1"
+
 #define OSD_DEBUG 0
 
 #define BAUD_RATE 115200
@@ -21,7 +23,8 @@
 #define CMD_WRITE_BUFFER 1
 #define CMD_SWAP_BUFFERS 2
 #define CMD_READ_RAW_TEMP 'R'
-#define CMD_READ_TEMP 'T'
+#define CMD_READ_TEMP     'T'
+#define CMD_READ_VER      'V'
 
 #define ROW_BYTES (16*3*2)
 #define ROWS 8
@@ -68,9 +71,14 @@ void USART_send(unsigned char data){
 	UDR0 = data;
 }
 
+void USART_send_str(char *s){
+	while ( *s != 0)
+	  USART_send(*s++);
+}
+
 ISR(USART_RX_vect) {
 	char cmd = UDR0;
-	char temp[8];
+	char temp[12];
 
 	if (state == CMD_WRITE_BUFFER) {
 		backBufferPtr[backBufferIdx] = cmd;
@@ -83,19 +91,22 @@ ISR(USART_RX_vect) {
 	} else if (cmd == CMD_SWAP_BUFFERS) {
 		loaderMode = false;
 		swapFlag = true;
-//		frontBuffer = !frontBuffer;
-//		frontBufferPtr = buffers[frontBuffer];
-//		backBufferPtr = buffers[!frontBuffer];
 	} else if (cmd == CMD_WRITE_BUFFER) {
 		backBufferIdx = 0;
 		state = CMD_WRITE_BUFFER;
 	} else if (cmd == CMD_READ_RAW_TEMP) {
 		sprintf(temp,"0x%03x\r\n",raw_adc_T);
-		for (int p=0;p<7;p++) USART_send(temp[p]);
+		USART_send_str(temp);
 	} else if (cmd == CMD_READ_TEMP) {
 		sprintf(temp,"0x%03x\r\n",adc_T);
-		for (int p=0;p<7;p++) USART_send(temp[p]);
-	}
+		USART_send_str(temp);
+	} else if (cmd == CMD_READ_VER) {
+                strcpy(temp,"V");
+                strcat(temp,VERSION);
+                strcat(temp,"\r\n");
+		USART_send_str(temp);
+        }
+
 }
 
 static inline void swap_buffer() {
@@ -327,11 +338,7 @@ int main() {
 
 	UART_init();
 
-	USART_send('L');
-	USART_send('E');
-	USART_send('D');
-	USART_send('\r');
-	USART_send('\n');
+	USART_send_str("LED\r\n");
 
 	sei();
 
@@ -357,7 +364,6 @@ int main() {
 			drawLoader();
 		}
 
-//		for ( int j = 0; j <  36 * 4/3; j++ ) for ( int k = 0; k <  3; k++ ) SPI_write(pat[k]*0x01);
 		for ( int outIndex = 0; outIndex < (36 * 4)/3; outIndex++ ) {
 			uint8_t pixelIndex = outIndex*2;
 			uint8_t pixelA = row[pixelIndex];
