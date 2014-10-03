@@ -8,6 +8,7 @@ import (
 
 	"github.com/ninjasphere/driver-go-gestic/gestic"
 	"github.com/ninjasphere/go-ninja/api"
+
 	"github.com/ninjasphere/go-ninja/logger"
 )
 

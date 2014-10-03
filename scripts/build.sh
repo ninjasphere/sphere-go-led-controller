@@ -29,9 +29,9 @@ if [ ! -d $GOPATH/src/github.com/ninjasphere/go-ninja ]; then
 	git clone git@github.com:ninjasphere/go-ninja.git $GOPATH/src/github.com/ninjasphere/go-ninja
 fi
 
-if [ ! -d $GOPATH/src/github.com/ninjasphere/github.com/ninjasphere/driver-go-gestic ]; then
+if [ ! -d $GOPATH/src/github.com/ninjasphere/github.com/ninjasphere/go-gestic ]; then
 	# Clone our internal gestic package
-	git clone git@github.com:ninjasphere/driver-go-gestic.git $GOPATH/src/github.com/ninjasphere/driver-go-gestic
+	git clone git@github.com:ninjasphere/go-gestic.git $GOPATH/src/github.com/ninjasphere/go-gestic
 fi
 
 

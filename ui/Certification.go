@@ -10,7 +10,7 @@ import (
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ninjasphere/driver-go-gestic/gestic"
+	"github.com/ninjasphere/go-gestic"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/sphere-go-led-controller/fonts/O4b03b"
 )

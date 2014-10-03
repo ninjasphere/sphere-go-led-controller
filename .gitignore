@@ -1,4 +1,4 @@
-bin/driver-go-led-controller
+bin/sphere-go-led-controller
 ./driver-go-led-controller
 sphere-serial
 sphere-config
