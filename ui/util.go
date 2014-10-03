@@ -9,10 +9,11 @@ import (
 	"math"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/model"
-	"github.com/ninjasphere/go-ninja/rpc"
 )
 
 type Image struct {
@@ -123,40 +124,73 @@ type Channel struct {
 	ID       string `json:"id"`
 }*/
 
-func getChannelIds(thingType string, protocol string, rpcClient *rpc.Client) ([]string, error) {
+func getChannelServices(thingType string, protocol string, conn *ninja.Connection) ([]*ninja.ServiceClient, error) {
 
 	//time.Sleep(time.Second * 3)
 
+	thingModel := conn.GetServiceClient("$home/services/ThingModel")
+
 	var things []model.Thing
 
-	call, err := rpcClient.Call("$home/services/ThingModel", "fetchByType", []interface{}{thingType}, &things)
+	err := thingModel.Call("fetchByType", []interface{}{thingType}, &things, time.Second*10)
 	//err = client.Call("fetch", "c7ac05e0-9999-4d93-bfe3-a0b4bb5e7e78", &thing)
 
 	if err != nil {
 		log.Fatalf("Failed calling fetchByType method: %s", err)
 	}
 
-	<-call.Done
 	spew.Dump(things)
 
-	var topics []string
+	var services []*ninja.ServiceClient
 
 	for _, thing := range things {
 
 		// Handle more than one channel with same protocol
-		thingTopic := getChannelTopic(&thing, protocol)
-		if thingTopic != "" {
-			topics = append(topics, thingTopic)
+		channelTopic := getChannelTopic(&thing, protocol)
+		if channelTopic != "" {
+			services = append(services, conn.GetServiceClient(channelTopic))
 		}
 	}
-	return topics, nil
+	return services, nil
 }
+
+/*func listenToEvents(topic string, conn *mqtt.MqttClient) {
+
+	filter, err := mqtt.NewTopicFilter(topic+"/event/+", 0)
+	if err != nil {
+		log.Fatalf("Boom, no good", err)
+	}
+
+	receipt, err := conn.StartSubscription(func(client *mqtt.MqttClient, message mqtt.Message) {
+		nameFind := nameRegex.FindAllStringSubmatch(string(message.Payload()), -1)
+		rssiFind := rssiRegex.FindAllStringSubmatch(string(message.Payload()), -1)
+
+		if nameFind == nil {
+			// Not a sticknfind
+		} else {
+			name := nameFind[0][1]
+			rssi := rssiFind[0][1]
+			spew.Dump("name", name, "rssi", rssi)
+
+			p.tag = name
+			p.rssi = rssi
+		}
+
+	}, filter)
+
+	if err != nil {
+		log.Fatalf("Boom, no good", err)
+	}
+
+	<-receipt
+
+}*/
 
 func getChannelTopic(thing *model.Thing, protocol string) string {
 
 	for _, channel := range *thing.Device.Channels {
 		if channel.Protocol == protocol {
-			return "$device/" + thing.Device.Guid + "/channel/" + channel.ID + "/" + protocol
+			return "$device/" + thing.Device.ID + "/channel/" + channel.ID
 		}
 	}
 

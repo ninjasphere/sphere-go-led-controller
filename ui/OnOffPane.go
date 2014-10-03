@@ -7,15 +7,15 @@ import (
 	"time"
 
 	"github.com/ninjasphere/driver-go-gestic/gestic"
+	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/logger"
-	"github.com/ninjasphere/go-ninja/rpc"
 )
 
 type OnOffPane struct {
-	log *logger.Logger
-	rpc *rpc.Client
+	log  *logger.Logger
+	conn *ninja.Connection
 
-	devices []string
+	devices []*ninja.ServiceClient
 
 	state         bool
 	onStateChange func(bool)
@@ -26,9 +26,9 @@ type OnOffPane struct {
 	ignoringGestures bool
 }
 
-func NewOnOffPane(offImage string, onImage string, onStateChange func(bool), rpcClient *rpc.Client, thingType string) *OnOffPane {
+func NewOnOffPane(offImage string, onImage string, onStateChange func(bool), conn *ninja.Connection, thingType string) *OnOffPane {
 
-	devices, err := getChannelIds(thingType, "on-off", rpcClient)
+	devices, err := getChannelServices(thingType, "on-off", conn)
 	if err != nil {
 		log.Fatalf("Failed to get %s devices: %s", err, err)
 	}
@@ -42,7 +42,7 @@ func NewOnOffPane(offImage string, onImage string, onStateChange func(bool), rpc
 		onStateChange: onStateChange,
 		log:           log,
 		devices:       devices,
-		rpc:           rpcClient,
+		conn:          conn,
 	}
 }
 
@@ -69,9 +69,9 @@ func (p *OnOffPane) SetState(state bool) {
 	p.state = state
 	for _, device := range p.devices {
 		if state {
-			p.rpc.Call(device, "turnOn", nil, nil)
+			device.Call("turnOn", nil, nil, time.Second)
 		} else {
-			p.rpc.Call(device, "turnOff", nil, nil)
+			device.Call("turnOff", nil, nil, time.Second)
 		}
 	}
 	p.onStateChange(state)

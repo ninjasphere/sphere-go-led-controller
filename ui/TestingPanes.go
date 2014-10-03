@@ -79,7 +79,7 @@ func (p *TextScrollPane) Render() (*image.RGBA, error) {
 
 	elapsedSeconds := int(elapsed.Seconds())
 
-	O4b03b.Font.DrawString(img, 0, 5, "Elliot", color.RGBA{0, 255, 255, 255})
+	O4b03b.Font.DrawString(img, 0, 5, "Hey! :)", color.RGBA{0, 255, 255, 255})
 
 	O4b03b.Font.DrawString(img, 0, 11, "02", color.RGBA{255, 0, 0, 255})
 
@@ -93,5 +93,3 @@ func (p *TextScrollPane) Render() (*image.RGBA, error) {
 func (p *TextScrollPane) IsDirty() bool {
 	return true
 }
-
-//	//blue := color.RGBA{0, 0, 255, 255}

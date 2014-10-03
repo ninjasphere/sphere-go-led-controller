@@ -7,13 +7,13 @@ import (
 	"time"
 
 	"github.com/ninjasphere/driver-go-gestic/gestic"
+	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/logger"
-	"github.com/ninjasphere/go-ninja/rpc"
 )
 
 type MediaPane struct {
-	log *logger.Logger
-	rpc *rpc.Client
+	log  *logger.Logger
+	conn *ninja.Connection
 
 	lastAirWheelTime time.Time
 	lastAirWheel     *uint8
@@ -22,35 +22,55 @@ type MediaPane struct {
 	volumeImage *Image
 	muteImage   *Image
 
+	playImage  *Image
+	pauseImage *Image
+	stopImage  *Image
+	nextImage  *Image
+
 	gestureSync *sync.Mutex
 
-	controlDevices []string
-	volumeDevices  []string
+	controlDevices []*ninja.ServiceClient
+	volumeDevices  []*ninja.ServiceClient
 }
 
-func NewMediaPane(volumeImage string, muteImage string, rpcClient *rpc.Client, thingType string) *MediaPane {
+type MediaPaneImages struct {
+	Volume string
+	Mute   string
+	Play   string
+	Pause  string
+	Stop   string
+	Next   string
+}
+
+func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 	log := logger.GetLogger("MediaPane")
 
-	controlDevices, err := getChannelIds(thingType, "media-control", rpcClient)
+	controlDevices, err := getChannelServices("MediaPlayer", "media-control", conn)
 	if err != nil {
-		log.Fatalf("Failed to get %s devices: %s", err, err)
+		log.Fatalf("Failed to get media-control devices: %s", err)
 	}
 	log.Infof("Pane got %d media-control devices", len(controlDevices))
 
-	volumeDevices, err := getChannelIds(thingType, "media-control", rpcClient)
+	volumeDevices, err := getChannelServices("MediaPlayer", "volume", conn)
 	if err != nil {
-		log.Fatalf("Failed to get %s devices: %s", err, err)
+		log.Fatalf("Failed to get volume devices: %s", err)
 	}
 	log.Infof("Pane got %d volume devices", len(volumeDevices))
 
 	return &MediaPane{
-		log:              log,
-		volumeDevices:    volumeDevices,
-		controlDevices:   controlDevices,
-		rpc:              rpcClient,
-		gestureSync:      &sync.Mutex{},
-		volumeImage:      loadImage(volumeImage),
-		muteImage:        loadImage(muteImage),
+		log:            log,
+		volumeDevices:  volumeDevices,
+		controlDevices: controlDevices,
+		conn:           conn,
+		gestureSync:    &sync.Mutex{},
+
+		volumeImage: loadImage(images.Volume),
+		muteImage:   loadImage(images.Mute),
+		playImage:   loadImage(images.Play),
+		pauseImage:  loadImage(images.Pause),
+		stopImage:   loadImage(images.Stop),
+		nextImage:   loadImage(images.Next),
+
 		lastAirWheelTime: time.Now(),
 	}
 }
@@ -93,8 +113,7 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureData) {
 			volume = math.Min(volume, 1)
 
 			if p.volume != volume {
-				p.log.Debugf("New volume %f:", volume)
-				p.volume = volume
+				p.SetVolume(volume)
 			}
 		}
 
@@ -104,6 +123,15 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureData) {
 	}
 
 	p.gestureSync.Unlock()
+}
+
+func (p *MediaPane) SetVolume(volume float64) {
+	p.log.Debugf("New volume %f:", volume)
+	p.volume = volume
+	for _, device := range p.volumeDevices {
+		device.Call("set", []interface{}{volume}, nil, time.Second)
+	}
+	//p.onStateChange(state)
 }
 
 func (p *MediaPane) Render() (*image.RGBA, error) {

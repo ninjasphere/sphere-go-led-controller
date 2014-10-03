@@ -10,10 +10,10 @@ import (
 
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/ninjasphere/driver-go-gestic/gestic"
+	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-ninja/devices"
 	"github.com/ninjasphere/go-ninja/logger"
-	"github.com/ninjasphere/go-ninja/rpc"
 )
 
 var onOffRate = &throttle{delay: time.Millisecond * 250}
@@ -22,11 +22,11 @@ var colorRate = &throttle{delay: time.Millisecond * 500}
 const colorRotateSpeed = 0.0015
 
 type LightPane struct {
-	log *logger.Logger
-	rpc *rpc.Client
+	log  *logger.Logger
+	conn *ninja.Connection
 
-	onOffDevices []string
-	colorDevices []string
+	onOffDevices []*ninja.ServiceClient
+	colorDevices []*ninja.ServiceClient
 
 	onOffState         bool
 	onOnOffStateChange func(bool)
@@ -38,14 +38,14 @@ type LightPane struct {
 	offImage *Image
 }
 
-func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool), onColorStateChange func(float64), rpcClient *rpc.Client) *LightPane {
+func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool), onColorStateChange func(float64), conn *ninja.Connection) *LightPane {
 
-	onOffDevices, err := getChannelIds("light", "on-off", rpcClient)
+	onOffDevices, err := getChannelServices("light", "on-off", conn)
 	if err != nil {
 		log.Fatalf("Failed to get on-off devices", err)
 	}
 
-	colorDevices, err := getChannelIds("light", "core.batching", rpcClient)
+	colorDevices, err := getChannelServices("light", "core.batching", conn)
 	if err != nil {
 		log.Fatalf("Failed to get on-off devices", err)
 	}
@@ -63,7 +63,7 @@ func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool)
 		log:                log,
 		onOffDevices:       onOffDevices,
 		colorDevices:       colorDevices,
-		rpc:                rpcClient,
+		conn:               conn,
 	}
 }
 
@@ -120,9 +120,9 @@ func (p *LightPane) SendOnOffToDevices() {
 	for _, device := range p.onOffDevices {
 
 		if p.onOffState {
-			p.rpc.Call(device, "turnOn", nil, nil)
+			device.Call("turnOn", nil, nil, time.Second)
 		} else {
-			p.rpc.Call(device, "turnOff", nil, nil)
+			device.Call("turnOff", nil, nil, time.Second)
 		}
 
 	}
@@ -141,12 +141,12 @@ func (p *LightPane) SendColorToDevices() {
 		transition := 500
 		brightness := 1.0
 
-		p.rpc.Call(device, "setBatch", &devices.LightDeviceState{
+		device.Call("setBatch", &devices.LightDeviceState{
 			OnOff:      &p.onOffState,
 			Color:      colorState,
 			Transition: &transition,
 			Brightness: &brightness,
-		}, nil)
+		}, nil, time.Second)
 
 	}
 }
