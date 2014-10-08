@@ -190,7 +190,12 @@ func getChannelTopic(thing *model.Thing, protocol string) string {
 
 	for _, channel := range *thing.Device.Channels {
 		if channel.Protocol == protocol {
-			return "$device/" + thing.Device.ID + "/channel/" + channel.ID
+			if thing.Device == nil {
+				spew.Dump("NO device on thing!", thing)
+				return ""
+			} else {
+				return "$device/" + thing.Device.ID + "/channel/" + channel.ID
+			}
 		}
 	}
 

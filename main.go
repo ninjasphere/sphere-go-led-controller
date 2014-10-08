@@ -11,8 +11,7 @@ import (
 	//"net/http"
 
 	"github.com/ninjasphere/go-ninja/api"
-	"github.com/ninjasphere/sphere-go-led-controller/ui"
-	"github.com/tarm/goserial"
+	"github.com/ninjasphere/go-ninja/config"
 )
 
 //import _ "net/http/pprof"
@@ -32,7 +31,17 @@ func main() {
 		log.Fatalf("Failed to connect to mqtt: %s", err)
 	}
 
-	layout, wake := ui.NewPaneLayout(false)
+	controller, err := NewLedController(conn)
+
+	if err != nil {
+		log.Fatalf("Failed to create led controller: %s", err)
+	}
+
+	enableControl := config.Bool(false, "enableControl")
+
+	controller.start(enableControl)
+
+	/*layout, wake := ui.NewPaneLayout(false)
 
 	mediaPane := ui.NewMediaPane(&ui.MediaPaneImages{
 		Volume: "images/media-volume-speaker.gif",
@@ -67,16 +76,6 @@ func main() {
 	}, conn, "fan")
 	layout.AddPane(fanPane)
 
-	// Toggle fan and heater panes every second
-	/*go func() {
-		state := false
-		for {
-			time.Sleep(time.Second * 1)
-			state = !state
-			fanPane.SetState(state)
-			heaterPane.SetState(state)
-		}
-	}()*/
 
 	//	layout.AddPane(ui.NewColorPane(color.RGBA{0, 0, 255, 255}))
 
@@ -116,12 +115,7 @@ func main() {
 		}
 	}()
 
-	/*go func() {
-		for {
-			time.Sleep(time.Second * 4)
-			layout.PanLeft()
-		}
-	}()*/
+	*/
 
 	blah := make(chan os.Signal, 1)
 	signal.Notify(blah, os.Interrupt, os.Kill)
@@ -130,12 +124,6 @@ func main() {
 	x := <-blah
 	log.Println("Got signal:", x)
 
-	/*	buf := make([]byte, 128)
-		n, err = s.Read(buf)
-		if err != nil {
-		  log.Fatal(err)
-		}
-		log.Print("%q", buf[:n])*/
 }
 
 var cmdWriteBuffer byte = 1

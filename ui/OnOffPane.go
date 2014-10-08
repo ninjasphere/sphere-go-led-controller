@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ninjasphere/driver-go-gestic/gestic"
+	"github.com/ninjasphere/go-gestic"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/logger"
 )

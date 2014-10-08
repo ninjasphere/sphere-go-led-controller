@@ -13,14 +13,14 @@ import (
 )
 
 type ColorPane struct {
-	image  *image.RGBA
-	colors []color.Color
+	image *image.RGBA
+	color color.Color
 }
 
-func NewColorPane(colors ...color.Color) *ColorPane {
+func NewColorPane(color color.Color) *ColorPane {
 	return &ColorPane{
-		colors: colors,
-		image:  image.NewRGBA(image.Rect(0, 0, width, height)),
+		color: color,
+		image: image.NewRGBA(image.Rect(0, 0, width, height)),
 	}
 }
 
@@ -29,12 +29,12 @@ func (p *ColorPane) Gesture(gesture *gestic.GestureData) {
 }
 
 func (p *ColorPane) Render() (*image.RGBA, error) {
-	draw.Draw(p.image, p.image.Bounds(), &image.Uniform{p.colors[0]}, image.ZP, draw.Src)
+	draw.Draw(p.image, p.image.Bounds(), &image.Uniform{p.color}, image.ZP, draw.Src)
 	return p.image, nil
 }
 
 func (p *ColorPane) IsDirty() bool {
-	return len(p.colors) > 1
+	return false
 }
 
 type TextScrollPane struct {
@@ -91,5 +91,43 @@ func (p *TextScrollPane) Render() (*image.RGBA, error) {
 }
 
 func (p *TextScrollPane) IsDirty() bool {
+	return true
+}
+
+type PairingCodePane struct {
+	text      string
+	textWidth int
+}
+
+func NewPairingCodePane(text string) *PairingCodePane {
+
+	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
+
+	width := O4b03b.Font.DrawString(img, 0, 0, text, color.Black)
+	log.Printf("Text '%s' width: %d", text, width)
+
+	return &PairingCodePane{
+		text:      text,
+		textWidth: width,
+	}
+}
+
+func (p *PairingCodePane) Gesture(gesture *gestic.GestureData) {
+
+}
+
+func (p *PairingCodePane) Render() (*image.RGBA, error) {
+	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
+
+	log.Printf("Rendering text '%s'")
+
+	start := 8 - int((float64(p.textWidth) / float64(2)))
+
+	O4b03b.Font.DrawString(img, start, 4, p.text, color.White)
+
+	return img, nil
+}
+
+func (p *PairingCodePane) IsDirty() bool {
 	return true
 }
