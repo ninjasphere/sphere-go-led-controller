@@ -41,7 +41,7 @@ func main() {
 	// This is used to avoid race conditions on startup
 	// used by upstart to emit a READY for this service
 	if "1" == os.Getenv("LEDCONTROLLER_RAISESTOP") {
-		p, err := os.FindProcess(os.Getpid())
+		p, _ := os.FindProcess(os.Getpid())
 		p.Signal(syscall.SIGSTOP)
 	}
 
