@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"os/signal"
+	"syscall"
 
 	//"net/http"
 
@@ -35,6 +36,13 @@ func main() {
 
 	if err != nil {
 		log.Fatalf("Failed to create led controller: %s", err)
+	}
+
+	// This is used to avoid race conditions on startup
+	// used by upstart to emit a READY for this service
+	if "1" == os.Getenv("LEDCONTROLLER_RAISESTOP") {
+		p, err := os.FindProcess(os.Getpid())
+		p.Signal(syscall.SIGSTOP)
 	}
 
 	enableControl := config.Bool(false, "enableControl")
