@@ -21,10 +21,12 @@ const drivername = "sphere-led-controller"
 
 func main() {
 
-	/*	go func() {
-		log.Printf("WOOOO")
-		log.Println(http.ListenAndServe(":6060", nil))
-	}()*/
+	/*
+		go func() {
+			log.Printf("Starting pprof server")
+			log.Println(http.ListenAndServe(":6060", nil))
+		}()
+		//*/
 
 	conn, err := ninja.Connect(drivername)
 
@@ -48,82 +50,6 @@ func main() {
 	enableControl := config.Bool(false, "enableControl")
 
 	controller.start(enableControl)
-
-	/*layout, wake := ui.NewPaneLayout(false)
-
-	mediaPane := ui.NewMediaPane(&ui.MediaPaneImages{
-		Volume: "images/media-volume-speaker.gif",
-		Mute:   "images/media-volume-mute.png",
-		Play:   "images/media-play.png",
-		Pause:  "images/media-pause.png",
-		Stop:   "images/media-prev.png", //TODO: FIXME!!
-		Next:   "images/media-next.png",
-	}, conn)
-	layout.AddPane(mediaPane)
-
-	if len(os.Getenv("CERTIFICATION")) > 0 {
-		layout.AddPane(ui.NewCertPane(conn.GetMqttClient()))
-	} else {
-		//layout.AddPane(ui.NewTextScrollPane("Exit Music (For A Film)"))
-
-		heaterPane := ui.NewOnOffPane("images/heater-off.png", "images/heater-on.gif", func(state bool) {
-			log.Printf("Heater state: %t", state)
-		}, conn, "heater")
-		layout.AddPane(heaterPane)
-	}
-
-	lightPane := ui.NewLightPane("images/light-off.png", "images/light-on.png", func(state bool) {
-		log.Printf("Light on-off state: %t", state)
-	}, func(state float64) {
-		log.Printf("Light color state: %f", state)
-	}, conn)
-	layout.AddPane(lightPane)
-
-	fanPane := ui.NewOnOffPane("images/fan-off.png", "images/fan-on.gif", func(state bool) {
-		log.Printf("Fan state: %t", state)
-	}, conn, "fan")
-	layout.AddPane(fanPane)
-
-
-	//	layout.AddPane(ui.NewColorPane(color.RGBA{0, 0, 255, 255}))
-
-	log.Println("starting")
-	c := &serial.Config{Name: "/dev/tty.ledmatrix", Baud: 115200}
-	s, err := serial.OpenPort(c)
-	if err != nil {
-		log.Printf("No led matrix? Ignoring... %s", err)
-	}
-
-	// Send a blank image to the led matrix
-	write(image.NewRGBA(image.Rect(0, 0, 16, 16)), s)
-
-	<-wake
-
-	go func() {
-		for {
-			//if s == nil {
-			//}
-			//time.Sleep(time.Second / 10)
-			image, wake, err := layout.Render()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			if s != nil {
-				write(image, s)
-			} else {
-				//	spew.Dump(image)
-			}
-
-			if wake != nil {
-				log.Println("Waiting as the UI is asleep")
-				<-wake
-				log.Println("UI woke up!")
-			}
-		}
-	}()
-
-	*/
 
 	blah := make(chan os.Signal, 1)
 	signal.Notify(blah, os.Interrupt, os.Kill)

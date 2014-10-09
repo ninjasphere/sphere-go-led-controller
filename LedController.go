@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
@@ -143,7 +142,6 @@ type IconRequest struct {
 }
 
 func (c *LedController) DisplayIcon(req *IconRequest) error {
-	spew.Dump("GOT COMMAND", req)
 	c.controlEnabled = false
 	c.pairingLayout.ShowIcon(req.Icon)
 	c.gotCommand()
