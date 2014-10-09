@@ -1,8 +1,10 @@
 package ui
 
 import (
+	"encoding/json"
 	"image"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,9 +14,16 @@ import (
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
+// How long after the last airwheel before we hide the volume display
+const volumeModeReset = time.Second
+const ignoreTap = time.Millisecond * 300
+
 type MediaPane struct {
 	log  *logger.Logger
 	conn *ninja.Connection
+
+	volumeMode      bool
+	volumeModeReset *time.Timer
 
 	lastAirWheelTime time.Time
 	lastAirWheel     *uint8
@@ -23,10 +32,13 @@ type MediaPane struct {
 	volumeImage *Image
 	muteImage   *Image
 
-	playImage  *Image
-	pauseImage *Image
-	stopImage  *Image
-	nextImage  *Image
+	ignoringTap    bool
+	ignoreTapTimer *time.Timer
+	playingState   string
+	playImage      *Image
+	pauseImage     *Image
+	stopImage      *Image
+	nextImage      *Image
 
 	gestureSync *sync.Mutex
 
@@ -52,13 +64,17 @@ func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 	}
 	log.Infof("Pane got %d media-control devices", len(controlDevices))
 
+	if len(controlDevices) > 1 {
+		log.Infof("WARNING... MORE THAN ONE MEDIA CONTROL DEVICE.... IT WILL ACT WEIRD")
+	}
+
 	volumeDevices, err := getChannelServices("MediaPlayer", "volume", conn)
 	if err != nil {
 		log.Fatalf("Failed to get volume devices: %s", err)
 	}
 	log.Infof("Pane got %d volume devices", len(volumeDevices))
 
-	return &MediaPane{
+	pane := &MediaPane{
 		log:            log,
 		volumeDevices:  volumeDevices,
 		controlDevices: controlDevices,
@@ -72,14 +88,44 @@ func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 		stopImage:   loadImage(images.Stop),
 		nextImage:   loadImage(images.Next),
 
-		lastAirWheelTime: time.Now(),
+		playingState: "stopped",
+		//lastAirWheelTime: time.Now(),
 	}
+
+	e := func(state string) func(params *json.RawMessage, values map[string]string) bool {
+		return func(params *json.RawMessage, values map[string]string) bool {
+			pane.log.Infof("Received control event. Setting playing state to %s", state)
+			pane.playingState = state
+			return true
+		}
+	}
+
+	for _, device := range controlDevices {
+		device.OnEvent("playing", e("playing"))
+		device.OnEvent("buffering", e("playing"))
+		device.OnEvent("paused", e("paused"))
+		device.OnEvent("stopped", e("stopped"))
+	}
+
+	pane.volumeModeReset = time.AfterFunc(0, func() {
+		pane.volumeMode = false
+	})
+
+	pane.ignoreTapTimer = time.AfterFunc(0, func() {
+		pane.ignoringTap = false
+	})
+
+	return pane
 }
 
 func (p *MediaPane) Gesture(gesture *gestic.GestureData) {
 	p.gestureSync.Lock()
+	defer p.gestureSync.Unlock()
 
 	if gesture.AirWheel.AirWheelVal > 0 {
+
+		p.volumeMode = true
+		p.volumeModeReset.Reset(volumeModeReset)
 
 		if time.Since(p.lastAirWheelTime) > time.Millisecond*300 {
 			p.lastAirWheel = nil
@@ -123,7 +169,42 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureData) {
 		//spew.Dump("last2", p.lastAirWheel)
 	}
 
-	p.gestureSync.Unlock()
+	if !p.ignoringTap && strings.Contains(gesture.Touch.Name(), "Tap") {
+		p.log.Infof("Tap!")
+
+		p.ignoreTapTimer.Reset(ignoreTap)
+
+		switch p.playingState {
+		case "stopped":
+			p.SetControlState("playing")
+		case "playing":
+			p.SetControlState("paused")
+		case "paused":
+			p.SetControlState("playing")
+		}
+
+	}
+
+}
+
+func (p *MediaPane) SetControlState(state string) {
+
+	p.log.Debugf("Setting playing state %s:", state)
+
+	var method = ""
+	switch state {
+	case "stopped":
+		method = "stop"
+	case "playing":
+		method = "pause"
+	case "paused":
+		method = "play"
+	}
+
+	for _, device := range p.controlDevices {
+		device.Call(method, []interface{}{}, nil, time.Second)
+	}
+	p.playingState = state
 }
 
 func (p *MediaPane) SetVolume(volume float64) {
@@ -136,11 +217,25 @@ func (p *MediaPane) SetVolume(volume float64) {
 }
 
 func (p *MediaPane) Render() (*image.RGBA, error) {
-	if p.volume > 0 {
-		return p.volumeImage.GetPositionFrame(1 - p.volume), nil
+
+	if p.volumeMode {
+		if p.volume > 0 {
+			return p.volumeImage.GetPositionFrame(1 - p.volume), nil
+		}
+
+		return p.muteImage.GetNextFrame(), nil
 	}
 
-	return p.muteImage.GetNextFrame(), nil
+	switch p.playingState {
+	case "stopped":
+		return p.stopImage.GetNextFrame(), nil
+	case "playing":
+		return p.playImage.GetNextFrame(), nil
+	case "paused":
+		return p.pauseImage.GetNextFrame(), nil
+	}
+
+	return p.stopImage.GetNextFrame(), nil
 }
 
 func (p *MediaPane) IsDirty() bool {
