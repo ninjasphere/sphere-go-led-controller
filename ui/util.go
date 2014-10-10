@@ -188,6 +188,10 @@ func getChannelServices(thingType string, protocol string, conn *ninja.Connectio
 
 func getChannelTopic(thing *model.Thing, protocol string) string {
 
+	if thing.Device == nil || thing.Device.Channels == nil {
+		return ""
+	}
+
 	for _, channel := range *thing.Device.Channels {
 		if channel.Protocol == protocol {
 			if thing.Device == nil {
