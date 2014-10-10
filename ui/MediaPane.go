@@ -10,6 +10,7 @@ import (
 
 	"github.com/ninjasphere/go-gestic"
 	"github.com/ninjasphere/go-ninja/api"
+	"github.com/ninjasphere/go-ninja/channels"
 
 	"github.com/ninjasphere/go-ninja/logger"
 )
@@ -17,6 +18,8 @@ import (
 // How long after the last airwheel before we hide the volume display
 const volumeModeReset = time.Second
 const ignoreTap = time.Millisecond * 300
+
+const volumeRate = 2 // Max number of volume calls per second
 
 type MediaPane struct {
 	log  *logger.Logger
@@ -28,9 +31,11 @@ type MediaPane struct {
 	lastAirWheelTime time.Time
 	lastAirWheel     *uint8
 
-	volume      float64
-	volumeImage *Image
-	muteImage   *Image
+	volume         float64
+	volumeImage    *Image
+	muteImage      *Image
+	lastVolumeTime time.Time
+	lastSentVolume float64
 
 	ignoringTap    bool
 	ignoreTapTimer *time.Timer
@@ -89,13 +94,17 @@ func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 		nextImage:   loadImage(images.Next),
 
 		playingState: "stopped",
+
+		lastVolumeTime: time.Now(),
 		//lastAirWheelTime: time.Now(),
 	}
 
 	e := func(state string) func(params *json.RawMessage, values map[string]string) bool {
 		return func(params *json.RawMessage, values map[string]string) bool {
-			pane.log.Infof("Received control event. Setting playing state to %s", state)
-			pane.playingState = state
+			if !pane.ignoringTap {
+				pane.log.Infof("Received control event. Setting playing state to %s", state)
+				pane.playingState = state
+			}
 			return true
 		}
 	}
@@ -105,6 +114,21 @@ func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 		device.OnEvent("buffering", e("playing"))
 		device.OnEvent("paused", e("paused"))
 		device.OnEvent("stopped", e("stopped"))
+	}
+
+	for _, device := range volumeDevices {
+		device.OnEvent("state", func(params *json.RawMessage, values map[string]string) bool {
+			if time.Since(pane.lastVolumeTime) > time.Millisecond*300 {
+
+				var volume channels.VolumeState
+				err := json.Unmarshal(*params, &volume)
+				if err != nil {
+					pane.log.Infof("Failed to unmarshal volume from %s error:%s", *params, err)
+				}
+				pane.volume = *volume.Volume
+			}
+			return true
+		})
 	}
 
 	pane.volumeModeReset = time.AfterFunc(0, func() {
@@ -154,13 +178,21 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureData) {
 
 			var volume float64 = p.volume + float64(offset)/255.0
 
-			//p.log.Debugf("Adjusted volume %f:", volume)
-
 			volume = math.Max(volume, 0)
 			volume = math.Min(volume, 1)
 
-			if p.volume != volume {
-				p.SetVolume(volume)
+			p.log.Debugf("Adjusted volume %f:", volume)
+
+			p.volume = volume
+
+			if p.lastSentVolume != volume {
+				if time.Since(p.lastVolumeTime) < time.Millisecond*500 {
+					p.log.Debugf("Volume rate limited")
+				} else {
+					p.lastVolumeTime = time.Now()
+					p.log.Debugf("Volume NOT rate limited")
+					p.SendVolume()
+				}
 			}
 		}
 
@@ -172,6 +204,7 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureData) {
 	if !p.ignoringTap && strings.Contains(gesture.Touch.Name(), "Tap") {
 		p.log.Infof("Tap!")
 
+		p.ignoringTap = true
 		p.ignoreTapTimer.Reset(ignoreTap)
 
 		switch p.playingState {
@@ -196,9 +229,9 @@ func (p *MediaPane) SetControlState(state string) {
 	case "stopped":
 		method = "stop"
 	case "playing":
-		method = "pause"
-	case "paused":
 		method = "play"
+	case "paused":
+		method = "pause"
 	}
 
 	for _, device := range p.controlDevices {
@@ -207,11 +240,13 @@ func (p *MediaPane) SetControlState(state string) {
 	p.playingState = state
 }
 
-func (p *MediaPane) SetVolume(volume float64) {
-	p.log.Debugf("New volume %f:", volume)
-	p.volume = volume
+func (p *MediaPane) SendVolume() {
+	p.log.Debugf("New volume %f:", p.volume)
+	//	p.volume = volume
+
+	p.lastSentVolume = p.volume
 	for _, device := range p.volumeDevices {
-		device.Call("set", []interface{}{volume}, nil, time.Second)
+		go device.Call("set", []interface{}{p.volume}, nil, time.Second)
 	}
 	//p.onStateChange(state)
 }
