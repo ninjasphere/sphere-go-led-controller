@@ -87,8 +87,6 @@ func (c *LedController) start(enableControl bool) {
 				}
 				write(image, c.serial)
 
-				<-c.waiting
-
 			}
 		}
 	}()
