@@ -162,7 +162,7 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 		Mute:   "images/media-volume-mute.png",
 		Play:   "images/media-play.png",
 		Pause:  "images/media-pause.png",
-		Stop:   "images/media-prev.png", //TODO: FIXME!!
+		Stop:   "images/media-stop.png",
 		Next:   "images/media-next.png",
 	}, conn)
 	layout.AddPane(mediaPane)
