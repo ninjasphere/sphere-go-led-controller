@@ -63,7 +63,7 @@ type MediaPaneImages struct {
 func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 	log := logger.GetLogger("MediaPane")
 
-	controlDevices, err := getChannelServices("MediaPlayer", "media-control", conn)
+	controlDevices, err := getChannelServices("mediaplayer", "media-control", conn)
 	if err != nil {
 		log.Fatalf("Failed to get media-control devices: %s", err)
 	}
@@ -73,7 +73,7 @@ func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 		log.Infof("WARNING... MORE THAN ONE MEDIA CONTROL DEVICE.... IT WILL ACT WEIRD")
 	}
 
-	volumeDevices, err := getChannelServices("MediaPlayer", "volume", conn)
+	volumeDevices, err := getChannelServices("mediaplayer", "volume", conn)
 	if err != nil {
 		log.Fatalf("Failed to get volume devices: %s", err)
 	}
