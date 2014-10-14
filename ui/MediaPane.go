@@ -125,7 +125,7 @@ func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 				if err != nil {
 					pane.log.Infof("Failed to unmarshal volume from %s error:%s", *params, err)
 				}
-				pane.volume = *volume.Volume
+				pane.volume = *volume.Level
 			}
 			return true
 		})
