@@ -231,9 +231,9 @@ func (p *MediaPane) SetControlState(state string) {
 	case "stopped":
 		method = "stop"
 	case "playing":
-		method = "play"
-	case "paused":
 		method = "pause"
+	case "paused":
+		method = "play"
 	}
 
 	for _, device := range p.controlDevices {
