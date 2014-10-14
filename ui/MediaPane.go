@@ -237,7 +237,7 @@ func (p *MediaPane) SetControlState(state string) {
 	}
 
 	for _, device := range p.controlDevices {
-		device.Call(method, []interface{}{}, nil, time.Second)
+		go device.Call(method, []interface{}{}, nil, time.Second)
 	}
 	p.playingState = state
 }
