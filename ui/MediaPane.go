@@ -125,7 +125,9 @@ func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 				if err != nil {
 					pane.log.Infof("Failed to unmarshal volume from %s error:%s", *params, err)
 				}
-				pane.volume = *volume.Level
+				// HACK: disabling the update from state events because SONOS sometimes divides
+				// input volume by 2, so the state keeps fighting with the user input.
+				//pane.volume = *volume.Level
 			}
 			return true
 		})
