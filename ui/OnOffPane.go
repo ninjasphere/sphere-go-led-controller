@@ -69,9 +69,9 @@ func (p *OnOffPane) SetState(state bool) {
 	p.state = state
 	for _, device := range p.devices {
 		if state {
-			device.Call("turnOn", nil, nil, time.Second)
+			device.Call("turnOn", nil, nil, 0)
 		} else {
-			device.Call("turnOff", nil, nil, time.Second)
+			device.Call("turnOff", nil, nil, 0)
 		}
 	}
 	p.onStateChange(state)

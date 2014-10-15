@@ -120,9 +120,9 @@ func (p *LightPane) SendOnOffToDevices() {
 	for _, device := range p.onOffDevices {
 
 		if p.onOffState {
-			device.Call("turnOn", nil, nil, time.Second)
+			device.Call("turnOn", nil, nil, 0)
 		} else {
-			device.Call("turnOff", nil, nil, time.Second)
+			device.Call("turnOff", nil, nil, 0)
 		}
 
 	}
@@ -146,7 +146,7 @@ func (p *LightPane) SendColorToDevices() {
 			Color:      colorState,
 			Transition: &transition,
 			Brightness: &brightness,
-		}, nil, time.Second)
+		}, nil, 0)
 
 	}
 }

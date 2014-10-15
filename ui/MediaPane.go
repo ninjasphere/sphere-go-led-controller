@@ -235,7 +235,7 @@ func (p *MediaPane) SetControlState(state string) {
 	}
 
 	for _, device := range p.controlDevices {
-		device.Call(method, []interface{}{}, nil, time.Second)
+		device.Call(method, nil, nil, 0)
 	}
 	p.playingState = state
 }
@@ -246,7 +246,7 @@ func (p *MediaPane) SendVolume() {
 
 	p.lastSentVolume = p.volume
 	for _, device := range p.volumeDevices {
-		go device.Call("set", []interface{}{p.volume}, nil, time.Second)
+		device.Call("set", channels.VolumeState{Level: &p.volume}, nil, 0)
 	}
 	//p.onStateChange(state)
 }
