@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/model"
 )
@@ -139,7 +138,7 @@ func getChannelServices(thingType string, protocol string, conn *ninja.Connectio
 		log.Fatalf("Failed calling fetchByType method: %s", err)
 	}
 
-	spew.Dump(things)
+	//spew.Dump(things)
 
 	var services []*ninja.ServiceClient
 
@@ -195,7 +194,7 @@ func getChannelTopic(thing *model.Thing, protocol string) string {
 	for _, channel := range *thing.Device.Channels {
 		if channel.Protocol == protocol {
 			if thing.Device == nil {
-				spew.Dump("NO device on thing!", thing)
+				//spew.Dump("NO device on thing!", thing)
 				return ""
 			} else {
 				return "$device/" + thing.Device.ID + "/channel/" + channel.ID
