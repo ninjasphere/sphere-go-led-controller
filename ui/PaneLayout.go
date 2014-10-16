@@ -17,8 +17,8 @@ const height = 16
 const ignoreFirstGestureAfterDuration = time.Second
 const panDuration = time.Millisecond * 350
 const wakeTransitionDuration = time.Millisecond * 1
-const sleepTimeout = time.Second * 10
-const sleepTransitionDuration = time.Second * 3
+const sleepTimeout = time.Second * 20
+const sleepTransitionDuration = time.Second * 5
 
 type PaneLayout struct {
 	currentPane int
