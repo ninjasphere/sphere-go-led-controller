@@ -16,10 +16,10 @@ type PairingLayout struct {
 
 func NewPairingLayout(conn *ninja.Connection) *PairingLayout {
 	layout := &PairingLayout{
-		log: logger.GetLogger("PaneLayout"),
-
+		log:  logger.GetLogger("PaneLayout"),
 		conn: conn,
 	}
+	layout.ShowIcon("loading.gif")
 
 	return layout
 }
