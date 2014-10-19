@@ -47,8 +47,8 @@ type MediaPane struct {
 
 	gestureSync *sync.Mutex
 
-	controlDevices []*ninja.ServiceClient
-	volumeDevices  []*ninja.ServiceClient
+	controlDevices map[string]*ninja.ServiceClient
+	volumeDevices  map[string]*ninja.ServiceClient
 }
 
 type MediaPaneImages struct {
@@ -63,26 +63,10 @@ type MediaPaneImages struct {
 func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 	log := logger.GetLogger("MediaPane")
 
-	controlDevices, err := getChannelServices("mediaplayer", "media-control", conn)
-	if err != nil {
-		log.Fatalf("Failed to get media-control devices: %s", err)
-	}
-	log.Infof("Pane got %d media-control devices", len(controlDevices))
-
-	if len(controlDevices) > 1 {
-		log.Infof("WARNING... MORE THAN ONE MEDIA CONTROL DEVICE.... IT WILL ACT WEIRD")
-	}
-
-	volumeDevices, err := getChannelServices("mediaplayer", "volume", conn)
-	if err != nil {
-		log.Fatalf("Failed to get volume devices: %s", err)
-	}
-	log.Infof("Pane got %d volume devices", len(volumeDevices))
-
 	pane := &MediaPane{
 		log:            log,
-		volumeDevices:  volumeDevices,
-		controlDevices: controlDevices,
+		volumeDevices:  make(map[string]*ninja.ServiceClient),
+		controlDevices: make(map[string]*ninja.ServiceClient),
 		conn:           conn,
 		gestureSync:    &sync.Mutex{},
 
@@ -109,29 +93,57 @@ func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 		}
 	}
 
-	for _, device := range controlDevices {
-		device.OnEvent("playing", e("playing"))
-		device.OnEvent("buffering", e("playing"))
-		device.OnEvent("paused", e("paused"))
-		device.OnEvent("stopped", e("stopped"))
-	}
+	getChannelServicesContinuous("mediaplayer", "media-control", func(devices []*ninja.ServiceClient, err error) {
 
-	for _, device := range volumeDevices {
-		device.OnEvent("state", func(params *json.RawMessage, values map[string]string) bool {
-			if time.Since(pane.lastVolumeTime) > time.Millisecond*300 {
+		if err != nil {
+			log.Infof("Failed to update control devices: %s", err)
+		} else {
+			for _, device := range devices {
 
-				var volume channels.VolumeState
-				err := json.Unmarshal(*params, &volume)
-				if err != nil {
-					pane.log.Infof("Failed to unmarshal volume from %s error:%s", *params, err)
+				if _, ok := pane.controlDevices[device.Topic]; !ok {
+					// New Device
+					log.Infof("Got control device: %s", device.Topic)
+
+					pane.controlDevices[device.Topic] = device
+
+					device.OnEvent("playing", e("playing"))
+					device.OnEvent("buffering", e("playing"))
+					device.OnEvent("paused", e("paused"))
+					device.OnEvent("stopped", e("stopped"))
 				}
-				// HACK: disabling the update from state events because SONOS sometimes divides
-				// input volume by 2, so the state keeps fighting with the user input.
-				//pane.volume = *volume.Level
 			}
-			return true
-		})
-	}
+		}
+
+	})
+
+	getChannelServicesContinuous("mediaplayer", "volume", func(devices []*ninja.ServiceClient, err error) {
+		if err != nil {
+			log.Infof("Failed to update volume devices: %s", err)
+		} else {
+			for _, device := range devices {
+
+				if _, ok := pane.volumeDevices[device.Topic]; !ok {
+					// New device
+					log.Infof("Got volume device: %s", device.Topic)
+
+					pane.volumeDevices[device.Topic] = device
+
+					device.OnEvent("state", func(params *json.RawMessage, values map[string]string) bool {
+						if time.Since(pane.lastVolumeTime) > time.Millisecond*300 {
+
+							var volume channels.VolumeState
+							err := json.Unmarshal(*params, &volume)
+							if err != nil {
+								pane.log.Infof("Failed to unmarshal volume from %s error:%s", *params, err)
+							}
+							pane.volume = *volume.Level
+						}
+						return true
+					})
+				}
+			}
+		}
+	})
 
 	pane.volumeModeReset = time.AfterFunc(0, func() {
 		pane.volumeMode = false

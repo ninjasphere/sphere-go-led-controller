@@ -4,7 +4,6 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	"log"
 	"strings"
 	"time"
 
@@ -40,31 +39,37 @@ type LightPane struct {
 
 func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool), onColorStateChange func(float64), conn *ninja.Connection) *LightPane {
 
-	onOffDevices, err := getChannelServices("light", "on-off", conn)
-	if err != nil {
-		log.Fatalf("Failed to get on-off devices", err)
-	}
-
-	colorDevices, err := getChannelServices("light", "core.batching", conn)
-	if err != nil {
-		log.Fatalf("Failed to get on-off devices", err)
-	}
-
 	log := logger.GetLogger("LightPane")
-	//log.Infof("Pane got %d on/off devices", len(onOffDevices))
-
-	log.Infof("Pane got %d color devices", len(colorDevices))
-
-	return &LightPane{
+	pane := &LightPane{
 		onImage:            loadImage(onImage),
 		offImage:           loadImage(offImage),
 		onOnOffStateChange: onOnOffStateChange,
 		onColorStateChange: onColorStateChange,
 		log:                log,
-		onOffDevices:       onOffDevices,
-		colorDevices:       colorDevices,
+		onOffDevices:       make([]*ninja.ServiceClient, 0),
+		colorDevices:       make([]*ninja.ServiceClient, 0),
 		conn:               conn,
 	}
+
+	getChannelServicesContinuous("light", "on-off", func(devices []*ninja.ServiceClient, err error) {
+		if err != nil {
+			log.Infof("Failed to update on-off devices: %s", err)
+		} else {
+			log.Infof("Pane got %d on/off devices", len(devices))
+			pane.onOffDevices = devices
+		}
+	})
+
+	getChannelServicesContinuous("light", "core.batching", func(devices []*ninja.ServiceClient, err error) {
+		if err != nil {
+			log.Infof("Failed to update batching devices: %s", err)
+		} else {
+			log.Infof("Pane got %d batching devices", len(devices))
+			pane.colorDevices = devices
+		}
+	})
+
+	return pane
 }
 
 func (p *LightPane) Gesture(gesture *gestic.GestureData) {

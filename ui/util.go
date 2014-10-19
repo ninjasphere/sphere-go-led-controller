@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"encoding/json"
 	"image"
 	"image/draw"
 	"image/gif"
@@ -123,11 +124,44 @@ type Channel struct {
 	ID       string `json:"id"`
 }*/
 
-func getChannelServices(thingType string, protocol string, conn *ninja.Connection) ([]*ninja.ServiceClient, error) {
+var conn *ninja.Connection
+var tasks []*request
+var thingModel *ninja.ServiceClient
+
+type request struct {
+	thingType string
+	protocol  string
+	cb        func([]*ninja.ServiceClient, error)
+}
+
+func runTasks(params *json.RawMessage, topicKeys map[string]string) bool {
+
+	for _, task := range tasks {
+		go task.cb(getChannelServices(task.thingType, task.protocol))
+	}
+
+	return true
+}
+
+func startSearchTasks(c *ninja.Connection) {
+	conn = c
+	thingModel = conn.GetServiceClient("$home/services/ThingModel")
+
+	thingModel.OnEvent("created", runTasks)
+	thingModel.OnEvent("updated", runTasks)
+	thingModel.OnEvent("deleted", runTasks)
+}
+
+func getChannelServicesContinuous(thingType string, protocol string, cb func([]*ninja.ServiceClient, error)) {
+
+	tasks = append(tasks, &request{thingType, protocol, cb})
+
+	cb(getChannelServices(thingType, protocol))
+}
+
+func getChannelServices(thingType string, protocol string) ([]*ninja.ServiceClient, error) {
 
 	//time.Sleep(time.Second * 3)
-
-	thingModel := conn.GetServiceClient("$home/services/ThingModel")
 
 	var things []model.Thing
 

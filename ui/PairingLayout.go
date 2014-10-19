@@ -14,10 +14,12 @@ type PairingLayout struct {
 	log         *logger.Logger
 }
 
-func NewPairingLayout(conn *ninja.Connection) *PairingLayout {
+func NewPairingLayout(c *ninja.Connection) *PairingLayout {
+	startSearchTasks(c)
+
 	layout := &PairingLayout{
 		log:  logger.GetLogger("PaneLayout"),
-		conn: conn,
+		conn: c,
 	}
 	layout.ShowIcon("loading.gif")
 

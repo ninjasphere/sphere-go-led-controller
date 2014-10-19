@@ -2,7 +2,6 @@ package ui
 
 import (
 	"image"
-	"log"
 	"strings"
 	"time"
 
@@ -28,22 +27,27 @@ type OnOffPane struct {
 
 func NewOnOffPane(offImage string, onImage string, onStateChange func(bool), conn *ninja.Connection, thingType string) *OnOffPane {
 
-	devices, err := getChannelServices(thingType, "on-off", conn)
-	if err != nil {
-		log.Fatalf("Failed to get %s devices: %s", err, err)
-	}
-
 	log := logger.GetLogger("OnOffPane")
-	log.Infof("Pane got %d on/off devices", len(devices))
 
-	return &OnOffPane{
+	pane := &OnOffPane{
 		onImage:       loadImage(onImage),
 		offImage:      loadImage(offImage),
 		onStateChange: onStateChange,
 		log:           log,
-		devices:       devices,
+		devices:       make([]*ninja.ServiceClient, 0),
 		conn:          conn,
 	}
+
+	getChannelServicesContinuous(thingType, "on-off", func(devices []*ninja.ServiceClient, err error) {
+		if err != nil {
+			log.Infof("Failed to update devices: %s", err)
+		} else {
+			log.Infof("Pane got %d on/off devices", len(devices))
+			pane.devices = devices
+		}
+	})
+
+	return pane
 }
 
 func (p *OnOffPane) Gesture(gesture *gestic.GestureData) {
