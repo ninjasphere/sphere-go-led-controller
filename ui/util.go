@@ -134,22 +134,42 @@ type request struct {
 	cb        func([]*ninja.ServiceClient, error)
 }
 
-func runTasks(params *json.RawMessage, topicKeys map[string]string) bool {
+var dirty = false
+
+func runTasks() {
 
 	for _, task := range tasks {
-		go task.cb(getChannelServices(task.thingType, task.protocol))
+		go func(t *request) {
+			t.cb(getChannelServices(t.thingType, t.protocol))
+		}(task)
 	}
 
-	return true
 }
 
 func startSearchTasks(c *ninja.Connection) {
 	conn = c
 	thingModel = conn.GetServiceClient("$home/services/ThingModel")
 
-	thingModel.OnEvent("created", runTasks)
-	thingModel.OnEvent("updated", runTasks)
-	thingModel.OnEvent("deleted", runTasks)
+	setDirty := func(params *json.RawMessage, topicKeys map[string]string) bool {
+		log.Println("Devices added/removed/updated. Marking dirty.")
+		dirty = true
+		return true
+	}
+
+	thingModel.OnEvent("created", setDirty)
+	thingModel.OnEvent("updated", setDirty)
+	thingModel.OnEvent("deleted", setDirty)
+
+	go func() {
+		time.Sleep(time.Second * 20)
+		for {
+			time.Sleep(time.Second * 5)
+			if dirty {
+				runTasks()
+				dirty = false
+			}
+		}
+	}()
 }
 
 func getChannelServicesContinuous(thingType string, protocol string, cb func([]*ninja.ServiceClient, error)) {
