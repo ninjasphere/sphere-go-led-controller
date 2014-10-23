@@ -57,9 +57,12 @@ func (c *LedController) start(enableControl bool) {
 
 				if c.controlLayout == nil {
 
-					log.Println("before layout get")
+					log.Println("Enabling layout... clearing LED")
+
+					write(image.NewRGBA(image.Rect(0, 0, 16, 16)), c.serial)
+
 					c.controlLayout = getPaneLayout(c.conn)
-					log.Println("after layout get")
+					log.Println("Finished control layout")
 				}
 
 				image, wake, err := c.controlLayout.Render()
