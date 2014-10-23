@@ -144,15 +144,23 @@ func runTasks() {
 		}(task)
 	}
 
+	if firstTime {
+		firstTime = false
+		timer.Reset(time.Second * 15)
+	}
+
 }
+
+var timer *time.Timer
+var firstTime = false
 
 func startSearchTasks(c *ninja.Connection) {
 	conn = c
 	thingModel = conn.GetServiceClient("$home/services/ThingModel")
 
 	setDirty := func(params *json.RawMessage, topicKeys map[string]string) bool {
-		log.Println("Devices added/removed/updated. Marking dirty.")
-		dirty = true
+		timer.Reset(time.Second * 5)
+		firstTime = true
 		return true
 	}
 
@@ -160,16 +168,7 @@ func startSearchTasks(c *ninja.Connection) {
 	thingModel.OnEvent("updated", setDirty)
 	thingModel.OnEvent("deleted", setDirty)
 
-	go func() {
-		time.Sleep(time.Second * 20)
-		for {
-			time.Sleep(time.Second * 5)
-			if dirty {
-				runTasks()
-				dirty = false
-			}
-		}
-	}()
+	timer = time.AfterFunc(time.Second*30, runTasks)
 }
 
 func getChannelServicesContinuous(thingType string, protocol string, cb func([]*ninja.ServiceClient, error)) {
