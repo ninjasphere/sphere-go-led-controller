@@ -11,6 +11,7 @@ import (
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/model"
 	"github.com/ninjasphere/sphere-go-led-controller/ui"
+	"github.com/ninjasphere/sphere-go-led-controller/util"
 	"github.com/tarm/goserial"
 )
 
@@ -32,7 +33,7 @@ func NewLedController(conn *ninja.Connection) (*LedController, error) {
 	}
 
 	// Send a blank image to the led matrix
-	write(image.NewRGBA(image.Rect(0, 0, 16, 16)), s)
+	util.WriteLEDMatrix(image.NewRGBA(image.Rect(0, 0, 16, 16)), s)
 
 	controller := &LedController{
 		conn:          conn,
@@ -59,7 +60,7 @@ func (c *LedController) start(enableControl bool) {
 
 					log.Println("Enabling layout... clearing LED")
 
-					write(image.NewRGBA(image.Rect(0, 0, 16, 16)), c.serial)
+					util.WriteLEDMatrix(image.NewRGBA(image.Rect(0, 0, 16, 16)), c.serial)
 
 					c.controlLayout = getPaneLayout(c.conn)
 					log.Println("Finished control layout")
@@ -70,7 +71,7 @@ func (c *LedController) start(enableControl bool) {
 					log.Fatal(err)
 				}
 
-				write(image, c.serial)
+				util.WriteLEDMatrix(image, c.serial)
 
 				if wake != nil {
 					log.Println("Waiting as the UI is asleep")
@@ -88,7 +89,7 @@ func (c *LedController) start(enableControl bool) {
 				if err != nil {
 					log.Fatal(err)
 				}
-				write(image, c.serial)
+				util.WriteLEDMatrix(image, c.serial)
 
 			}
 		}
