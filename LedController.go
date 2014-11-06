@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"time"
 
 	"github.com/lucasb-eyer/go-colorful"
@@ -84,12 +83,13 @@ func (c *LedController) start(enableControl bool) {
 				case <-frameWritten:
 					// All good.
 				case <-time.After(10 * time.Second):
-					log.Println("Timeout writing to LED matrix. REBOOTING!")
+					log.Println("Timeout writing to LED matrix. Quitting.")
+					os.Exit(1)
 					// Timed out writing to the led matrix. For now. Boot!
-					cmd := exec.Command("reboot")
-					output, err := cmd.Output()
+					//cmd := exec.Command("reboot")
+					//output, err := cmd.Output()
 
-					log.Printf("Output from reboot: %s err: %s", output, err)
+					//log.Printf("Output from reboot: %s err: %s", output, err)
 				}
 
 				if wake != nil {
