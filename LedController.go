@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/lucasb-eyer/go-colorful"
@@ -32,6 +33,22 @@ func NewLedController(conn *ninja.Connection) (*LedController, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	log.Printf("Resetting LED Matrix")
+	cmd := exec.Command("/usr/local/bin/reset-led-matrix")
+	output, err := cmd.Output()
+	log.Printf("Output from reset: %s err: %s", output, err)
+
+	// Now we wait for the init string
+	buf := make([]byte, 16)
+	_, err = s.Read(buf)
+	if err != nil {
+		log.Fatalf("Failed to initialisation string from led matrix : %s", err)
+	}
+	if buf[0] != byte('L') {
+		log.Fatalf("Expected an 'L', got '%s'", buf)
+	}
+	log.Printf("Read init string from LED Matrix: %s", buf)
 
 	// Send a blank image to the led matrix
 	util.WriteLEDMatrix(image.NewRGBA(image.Rect(0, 0, 16, 16)), s)

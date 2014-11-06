@@ -1,0 +1,10 @@
+#!/bin/bash
+echo in > /sys/class/gpio/gpio113/direction
+echo 113 > /sys/class/gpio/unexport
+echo 7 > /sys/kernel/debug/omap_mux/gpmc_a0 # RST
+echo 48 > /sys/class/gpio/export
+echo out > /sys/class/gpio/gpio48/direction
+echo 0 > /sys/class/gpio/gpio48/value
+sleep 1
+echo in > /sys/class/gpio/gpio48/direction
+echo 48 > /sys/class/gpio/unexport
