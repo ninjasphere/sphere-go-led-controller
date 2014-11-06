@@ -5,6 +5,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
+	"time"
 
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/ninjasphere/go-ninja/api"
@@ -52,6 +54,8 @@ func NewLedController(conn *ninja.Connection) (*LedController, error) {
 func (c *LedController) start(enableControl bool) {
 	c.controlEnabled = enableControl
 
+	frameWritten := make(chan bool)
+
 	go func() {
 		for {
 			if c.controlEnabled {
@@ -71,7 +75,22 @@ func (c *LedController) start(enableControl bool) {
 					log.Fatal(err)
 				}
 
-				util.WriteLEDMatrix(image, c.serial)
+				go func() {
+					util.WriteLEDMatrix(image, c.serial)
+					frameWritten <- true
+				}()
+
+				select {
+				case <-frameWritten:
+					// All good.
+				case <-time.After(10 * time.Second):
+					log.Println("Timeout writing to LED matrix. REBOOTING!")
+					// Timed out writing to the led matrix. For now. Boot!
+					cmd := exec.Command("reboot")
+					output, err := cmd.Output()
+
+					log.Printf("Output from reboot: %s err: %s", output, err)
+				}
 
 				if wake != nil {
 					log.Println("Waiting as the UI is asleep")
