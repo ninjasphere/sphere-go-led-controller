@@ -27,4 +27,4 @@ postrc=$?
 $SKIP_SERVICE_CONTROL || start sphere-leds || true
 $SKIP_SERVICE_CONTROL || start devkit-status-led || true
 
-test $rc -eq 0 && $postrc -eq 0
+test $rc -eq 0 && test $postrc -eq 0
