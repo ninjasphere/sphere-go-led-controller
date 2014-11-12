@@ -5,12 +5,15 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
+	"time"
 
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/model"
 	"github.com/ninjasphere/sphere-go-led-controller/ui"
+	"github.com/ninjasphere/sphere-go-led-controller/util"
 	"github.com/tarm/goserial"
 )
 
@@ -31,8 +34,24 @@ func NewLedController(conn *ninja.Connection) (*LedController, error) {
 		return nil, err
 	}
 
+	log.Printf("Resetting LED Matrix")
+	cmd := exec.Command("/usr/local/bin/reset-led-matrix")
+	output, err := cmd.Output()
+	log.Printf("Output from reset: %s err: %s", output, err)
+
+	// Now we wait for the init string
+	buf := make([]byte, 16)
+	_, err = s.Read(buf)
+	if err != nil {
+		log.Fatalf("Failed to initialisation string from led matrix : %s", err)
+	}
+	if buf[0] != byte('L') {
+		log.Fatalf("Expected an 'L', got '%s'", buf)
+	}
+	log.Printf("Read init string from LED Matrix: %s", buf)
+
 	// Send a blank image to the led matrix
-	write(image.NewRGBA(image.Rect(0, 0, 16, 16)), s)
+	util.WriteLEDMatrix(image.NewRGBA(image.Rect(0, 0, 16, 16)), s)
 
 	controller := &LedController{
 		conn:          conn,
@@ -51,6 +70,8 @@ func NewLedController(conn *ninja.Connection) (*LedController, error) {
 func (c *LedController) start(enableControl bool) {
 	c.controlEnabled = enableControl
 
+	frameWritten := make(chan bool)
+
 	go func() {
 		for {
 			if c.controlEnabled {
@@ -59,7 +80,7 @@ func (c *LedController) start(enableControl bool) {
 
 					log.Println("Enabling layout... clearing LED")
 
-					write(image.NewRGBA(image.Rect(0, 0, 16, 16)), c.serial)
+					util.WriteLEDMatrix(image.NewRGBA(image.Rect(0, 0, 16, 16)), c.serial)
 
 					c.controlLayout = getPaneLayout(c.conn)
 					log.Println("Finished control layout")
@@ -70,7 +91,23 @@ func (c *LedController) start(enableControl bool) {
 					log.Fatal(err)
 				}
 
-				write(image, c.serial)
+				go func() {
+					util.WriteLEDMatrix(image, c.serial)
+					frameWritten <- true
+				}()
+
+				select {
+				case <-frameWritten:
+					// All good.
+				case <-time.After(10 * time.Second):
+					log.Println("Timeout writing to LED matrix. Quitting.")
+					os.Exit(1)
+					// Timed out writing to the led matrix. For now. Boot!
+					//cmd := exec.Command("reboot")
+					//output, err := cmd.Output()
+
+					//log.Printf("Output from reboot: %s err: %s", output, err)
+				}
 
 				if wake != nil {
 					log.Println("Waiting as the UI is asleep")
@@ -88,7 +125,7 @@ func (c *LedController) start(enableControl bool) {
 				if err != nil {
 					log.Fatal(err)
 				}
-				write(image, c.serial)
+				util.WriteLEDMatrix(image, c.serial)
 
 			}
 		}
