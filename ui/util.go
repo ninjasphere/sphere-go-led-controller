@@ -51,7 +51,7 @@ func loadImage(src string) *Image {
 	} else if strings.Contains(srcLower, ".png") {
 		return loadPng(src)
 	} else {
-		log.Fatalf("Unknown image format: %s", src)
+		log.Printf("Unknown image format: %s", src)
 	}
 	return nil
 }
@@ -60,12 +60,12 @@ func loadPng(src string) *Image {
 	file, err := os.Open(src)
 
 	if err != nil {
-		log.Fatalf("Could not open png '%s' : %s", src, err)
+		log.Printf("Could not open png '%s' : %s", src, err)
 	}
 
 	img, err := png.Decode(file)
 	if err != nil {
-		log.Fatalf("PNG decoding failed on image '%s' : %s", src, err)
+		log.Printf("PNG decoding failed on image '%s' : %s", src, err)
 	}
 
 	return &Image{
@@ -77,12 +77,12 @@ func loadGif(src string) *Image {
 	file, err := os.Open(src)
 
 	if err != nil {
-		log.Fatalf("Could not open gif '%s' : %s", src, err)
+		log.Printf("Could not open gif '%s' : %s", src, err)
 	}
 
 	img, err := gif.DecodeAll(file)
 	if err != nil {
-		log.Fatalf("Gif decoding failed on image '%s' : %s", src, err)
+		log.Printf("Gif decoding failed on image '%s' : %s", src, err)
 	}
 
 	var frames = []*image.RGBA{}
@@ -189,7 +189,7 @@ func getChannelServices(thingType string, protocol string) ([]*ninja.ServiceClie
 	//err = client.Call("fetch", "c7ac05e0-9999-4d93-bfe3-a0b4bb5e7e78", &thing)
 
 	if err != nil {
-		log.Fatalf("Failed calling fetchByType method: %s", err)
+		log.Printf("Failed calling fetchByType method %s ", err)
 	}
 
 	//spew.Dump(things)

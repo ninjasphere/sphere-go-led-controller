@@ -88,7 +88,7 @@ func (c *LedController) start(enableControl bool) {
 
 				image, wake, err := c.controlLayout.Render()
 				if err != nil {
-					log.Fatal(err)
+					log.Fatalf("Unable to render()", err)
 				}
 
 				go func() {
@@ -123,7 +123,7 @@ func (c *LedController) start(enableControl bool) {
 
 				image, err := c.pairingLayout.Render()
 				if err != nil {
-					log.Fatal(err)
+					log.Fatalf("Unable to render()", err)
 				}
 				util.WriteLEDMatrix(image, c.serial)
 
