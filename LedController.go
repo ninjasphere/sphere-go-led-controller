@@ -12,6 +12,7 @@ import (
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/model"
+	ledmodel "github.com/ninjasphere/sphere-go-led-controller/model"
 	"github.com/ninjasphere/sphere-go-led-controller/ui"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 	"github.com/tarm/goserial"
@@ -182,6 +183,28 @@ type IconRequest struct {
 func (c *LedController) DisplayIcon(req *IconRequest) error {
 	c.controlEnabled = false
 	c.pairingLayout.ShowIcon(req.Icon)
+	c.gotCommand()
+	return nil
+}
+
+func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
+	c.controlEnabled = false
+	col, _ := colorful.Hex("#000000")
+	switch m.Mode {
+	case "reboot":
+		col, _ = colorful.Hex("#00FF00")
+	case "reset-userdata":
+		col, _ = colorful.Hex("#FFFF00")
+	case "reset-root":
+		col, _ = colorful.Hex("#FF0000")
+	case "none":
+		c.controlEnabled = true
+	}
+	if m.Hold {
+		c.pairingLayout.ShowColor(col)
+	} else {
+		c.pairingLayout.ShowFadingColor(col, m.Duration)
+	}
 	c.gotCommand()
 	return nil
 }
