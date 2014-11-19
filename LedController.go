@@ -2,6 +2,7 @@ package main
 
 import (
 	"image"
+	"image/color"
 	"io"
 	"log"
 	"os"
@@ -189,7 +190,9 @@ func (c *LedController) DisplayIcon(req *IconRequest) error {
 
 func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
 	c.controlEnabled = false
-	col, _ := colorful.Hex("#000000")
+	fade := m.Duration > 0 && !m.Hold
+	loading := false
+	var col color.Color
 	switch m.Mode {
 	case "reboot":
 		col, _ = colorful.Hex("#00FF00")
@@ -197,14 +200,18 @@ func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
 		col, _ = colorful.Hex("#FFFF00")
 	case "reset-root":
 		col, _ = colorful.Hex("#FF0000")
-	case "none":
-		c.controlEnabled = true
+	default:
+		loading = true
 	}
-	if m.Hold {
-		c.pairingLayout.ShowColor(col)
-	} else {
+
+	if loading {
+		c.pairingLayout.ShowIcon("loading.gif")
+	} else if fade {
 		c.pairingLayout.ShowFadingColor(col, m.Duration)
+	} else {
+		c.pairingLayout.ShowColor(col)
 	}
+
 	c.gotCommand()
 	return nil
 }
