@@ -1,10 +1,10 @@
 package util
 
 import (
-       "io"
-       "image"
-       "log"
-       "math"
+	"image"
+	"io"
+	"log"
+	"math"
 )
 
 var cmdWriteBuffer byte = 1
@@ -56,27 +56,27 @@ func WriteLEDMatrix(image *image.RGBA, s io.ReadWriteCloser) {
 
 	_, err := s.Write([]byte{cmdWriteBuffer})
 	if err != nil {
-		log.Fatal("Failed writing frame", err)
+		log.Printf("Failed writing frame", err)
 	}
 
 	_, err = s.Write(finalFrame[:])
 	if err != nil {
-		log.Fatal("Failed writing frame", err)
+		log.Printf("Failed writing frame", err)
 	}
 
 	_, err = s.Write([]byte{cmdSwapBuffers})
 	if err != nil {
-		log.Fatal("Failed writing frame", err)
+		log.Printf("Failed writing frame", err)
 	}
 
 	//log.Println("Wrote frame", n)
 	buf := make([]byte, 1)
 	_, err = s.Read(buf)
 	if err != nil {
-		log.Fatalf("Failed to read char after sending frame : %s", err)
+		log.Printf("Failed to read char after sending frame : %s", err)
 	}
 	if buf[0] != byte('F') {
-		log.Fatalf("Expected an 'F', got '%q'", buf[0])
+		log.Printf("Expected an 'F', got '%q'", buf[0])
 	}
 }
 

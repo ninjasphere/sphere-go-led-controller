@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"github.com/ninjasphere/go-ninja/logger"
 	"os"
 	"os/signal"
 
@@ -24,16 +24,18 @@ func main() {
 		}()
 		//*/
 
+	log := logger.GetLogger("LED-controller")
+
 	conn, err := ninja.Connect(drivername)
 
 	if err != nil {
-		log.Fatalf("Failed to connect to mqtt: %s", err)
+		log.FatalErrorf(err, "Failed to connect to mqtt")
 	}
 
 	controller, err := NewLedController(conn)
 
 	if err != nil {
-		log.Fatalf("Failed to create led controller: %s", err)
+		log.FatalErrorf(err, "Failed to create led controller")
 	}
 
 	enableControl := config.Bool(false, "enableControl")
@@ -45,6 +47,6 @@ func main() {
 
 	// Block until a signal is received.
 	x := <-blah
-	log.Println("Got signal:", x)
+	log.Infof("Got signal:", x)
 
 }

@@ -3,9 +3,9 @@ package ui
 import (
 	"encoding/json"
 	"fmt"
+
 	"image"
 	"image/color"
-	"log"
 	"regexp"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
@@ -47,7 +47,7 @@ func NewCertPane(conn *mqtt.MqttClient) *CertPane {
 	}, filter)
 
 	if err != nil {
-		log.Fatalf("Boom, no good", err)
+		log.HandleError(err, "Could not start subscription to waypoint topic")
 	}
 
 	<-receipt
@@ -68,7 +68,7 @@ func (p *CertPane) StartRssi(conn *mqtt.MqttClient) {
 
 	filter, err := mqtt.NewTopicFilter("$device/+/TEMPPATH/rssi", 0)
 	if err != nil {
-		log.Fatalf("Boom, no good", err)
+		p.log.HandleError(err, "Could not subscribe to $device/+/TEMPPATH/rssi ")
 	}
 
 	receipt, err := conn.StartSubscription(func(client *mqtt.MqttClient, message mqtt.Message) {
@@ -89,7 +89,7 @@ func (p *CertPane) StartRssi(conn *mqtt.MqttClient) {
 	}, filter)
 
 	if err != nil {
-		log.Fatalf("Boom, no good", err)
+		p.log.HandleError(err, "")
 	}
 
 	<-receipt

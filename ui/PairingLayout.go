@@ -6,6 +6,7 @@ import (
 
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/logger"
+	"time"
 )
 
 type PairingLayout struct {
@@ -28,6 +29,10 @@ func NewPairingLayout(c *ninja.Connection) *PairingLayout {
 
 func (l *PairingLayout) ShowColor(c color.Color) {
 	l.currentPane = NewColorPane(c)
+}
+
+func (l *PairingLayout) ShowFadingColor(c color.Color, d time.Duration) {
+	l.currentPane = NewFadingColorPane(c, d)
 }
 
 func (l *PairingLayout) ShowCode(text string) {

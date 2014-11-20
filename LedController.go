@@ -2,6 +2,7 @@ package main
 
 import (
 	"image"
+	"image/color"
 	"io"
 	"log"
 	"os"
@@ -12,6 +13,7 @@ import (
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/model"
+	ledmodel "github.com/ninjasphere/sphere-go-led-controller/model"
 	"github.com/ninjasphere/sphere-go-led-controller/ui"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 	"github.com/tarm/goserial"
@@ -88,7 +90,7 @@ func (c *LedController) start(enableControl bool) {
 
 				image, wake, err := c.controlLayout.Render()
 				if err != nil {
-					log.Fatal(err)
+					log.Fatalf("Unable to render()", err)
 				}
 
 				go func() {
@@ -123,7 +125,7 @@ func (c *LedController) start(enableControl bool) {
 
 				image, err := c.pairingLayout.Render()
 				if err != nil {
-					log.Fatal(err)
+					log.Fatalf("Unable to render()", err)
 				}
 				util.WriteLEDMatrix(image, c.serial)
 
@@ -182,6 +184,34 @@ type IconRequest struct {
 func (c *LedController) DisplayIcon(req *IconRequest) error {
 	c.controlEnabled = false
 	c.pairingLayout.ShowIcon(req.Icon)
+	c.gotCommand()
+	return nil
+}
+
+func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
+	c.controlEnabled = false
+	fade := m.Duration > 0 && !m.Hold
+	loading := false
+	var col color.Color
+	switch m.Mode {
+	case "reboot":
+		col, _ = colorful.Hex("#00FF00")
+	case "reset-userdata":
+		col, _ = colorful.Hex("#FFFF00")
+	case "reset-root":
+		col, _ = colorful.Hex("#FF0000")
+	default:
+		loading = true
+	}
+
+	if loading {
+		c.pairingLayout.ShowIcon("loading.gif")
+	} else if fade {
+		c.pairingLayout.ShowFadingColor(col, m.Duration)
+	} else {
+		c.pairingLayout.ShowColor(col)
+	}
+
 	c.gotCommand()
 	return nil
 }
