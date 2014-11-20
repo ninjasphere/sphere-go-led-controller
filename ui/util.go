@@ -7,17 +7,15 @@ import (
 	"image/draw"
 	"image/gif"
 	"image/png"
+	"log"
 	"math"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/ninjasphere/go-ninja/api"
-	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
 )
-
-var log = logger.GetLogger("ui")
 
 type Image struct {
 	pos    int
@@ -42,7 +40,7 @@ func (i *Image) GetPositionFrame(position float64, blend bool) *image.RGBA {
 
 	framePosition := math.Mod(relativePosition, 1)
 
-	log.Debugf("GetPositionFrame. Frames:%d Position:%f RelativePosition:%f FramePosition:%f PreviousFrame:%d NextFrame:%d", len(i.frames), position, relativePosition, framePosition, previousFrame, nextFrame)
+	//log.Debugf("GetPositionFrame. Frames:%d Position:%f RelativePosition:%f FramePosition:%f PreviousFrame:%d NextFrame:%d", len(i.frames), position, relativePosition, framePosition, previousFrame, nextFrame)
 	if !blend || previousFrame == nextFrame {
 		// We can just send back a single frame
 		return i.frames[previousFrame]
@@ -174,7 +172,7 @@ func startSearchTasks(c *ninja.Connection) {
 	thingModel = conn.GetServiceClient("$home/services/ThingModel")
 
 	setDirty := func(params *json.RawMessage, topicKeys map[string]string) bool {
-		log.Debugf("Devices added/removed/updated. Marking dirty.")
+		log.Printf("Devices added/removed/updated. Marking dirty.")
 		dirty = true
 		return true
 	}
