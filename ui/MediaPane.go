@@ -269,7 +269,7 @@ func (p *MediaPane) Render() (*image.RGBA, error) {
 
 	if p.volumeMode {
 		if p.volume > 0 {
-			return p.volumeImage.GetPositionFrame(1 - p.volume), nil
+			return p.volumeImage.GetPositionFrame(1-p.volume, true), nil
 		}
 
 		return p.muteImage.GetNextFrame(), nil

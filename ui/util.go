@@ -3,18 +3,21 @@ package ui
 import (
 	"encoding/json"
 	"image"
+	"image/color"
 	"image/draw"
 	"image/gif"
 	"image/png"
-	"log"
 	"math"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/ninjasphere/go-ninja/api"
+	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
 )
+
+var log = logger.GetLogger("ui")
 
 type Image struct {
 	pos    int
@@ -30,9 +33,29 @@ func (i *Image) GetNextFrame() *image.RGBA {
 }
 
 // GetPositionFrame returns the frame corresponding to the position given 0....1
-func (i *Image) GetPositionFrame(position float64) *image.RGBA {
-	frameNumber := math.Min(float64(len(i.frames)-1), math.Floor(position*float64(len(i.frames))))
-	return i.frames[int(frameNumber)]
+func (i *Image) GetPositionFrame(position float64, blend bool) *image.RGBA {
+
+	relativePosition := position * float64(len(i.frames)-1)
+
+	previousFrame := int(math.Floor(relativePosition))
+	nextFrame := int(math.Ceil(relativePosition))
+
+	framePosition := math.Mod(relativePosition, 1)
+
+	log.Debugf("GetPositionFrame. Frames:%d Position:%f RelativePosition:%f FramePosition:%f PreviousFrame:%d NextFrame:%d", len(i.frames), position, relativePosition, framePosition, previousFrame, nextFrame)
+	if !blend || previousFrame == nextFrame {
+		// We can just send back a single frame
+		return i.frames[previousFrame]
+	}
+
+	maskNext := image.NewUniform(color.Alpha{uint8(255 * framePosition)})
+
+	frame := image.NewRGBA(image.Rect(0, 0, 16, 16))
+
+	draw.Draw(frame, frame.Bounds(), i.frames[previousFrame], image.Point{0, 0}, draw.Src)
+	draw.DrawMask(frame, frame.Bounds(), i.frames[nextFrame], image.Point{0, 0}, maskNext, image.Point{0, 0}, draw.Over)
+
+	return frame
 }
 
 func (i *Image) GetNumFrames() int {
@@ -151,7 +174,7 @@ func startSearchTasks(c *ninja.Connection) {
 	thingModel = conn.GetServiceClient("$home/services/ThingModel")
 
 	setDirty := func(params *json.RawMessage, topicKeys map[string]string) bool {
-		log.Println("Devices added/removed/updated. Marking dirty.")
+		log.Debugf("Devices added/removed/updated. Marking dirty.")
 		dirty = true
 		return true
 	}
