@@ -55,7 +55,45 @@ func NewFadingColorPane(in color.Color, d time.Duration) *ColorPane {
 	}
 	return pane
 }
+
+// creates a pane that fades and shrinks towards the center as time progresses
+func NewFadingShrinkingColorPane(in color.Color, d time.Duration) *ColorPane {
+
+	pane := NewFadingColorPane(in, d)
+	basicDraw := pane.draw
+	start := time.Now()
+	black := color.RGBA{
+		R: 0,
+		G: 0,
+		B: 0,
+		A: 0,
 	}
+
+	pane.bounds = func() image.Rectangle {
+		n := time.Now().Sub(start)
+		dim := 0
+		if d > n && d > 0 {
+			dim = int(float64(d-n) * 8.0 / float64(d))
+		}
+		rect := image.Rectangle{
+			Min: image.Point{
+				X: 8 - dim,
+				Y: 8 - dim,
+			},
+			Max: image.Point{
+				X: 8 + dim,
+				Y: 8 + dim,
+			},
+		}
+		return rect
+	}
+
+	pane.draw = func() {
+		draw.Draw(pane.image, pane.image.Bounds(), &image.Uniform{black}, image.ZP, draw.Src)
+		basicDraw()
+	}
+
+	return pane
 }
 
 func (p *ColorPane) Gesture(gesture *gestic.GestureData) {
