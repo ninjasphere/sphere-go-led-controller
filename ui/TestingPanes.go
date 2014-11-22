@@ -14,28 +14,38 @@ import (
 
 type ColorPane struct {
 	image  *image.RGBA
-	color  color.Color
-	filter func(color.Color) color.Color
+	color  func() color.Color
+	draw   func()
+	bounds func() image.Rectangle
 }
 
-func NewColorPane(color color.Color) *ColorPane {
-	return &ColorPane{
-		color:  color,
-		image:  image.NewRGBA(image.Rect(0, 0, width, height)),
-		filter: nil,
+func NewColorPane(in color.Color) *ColorPane {
+	pane := &ColorPane{
+		color: func() color.Color {
+			return in
+		},
+		image: image.NewRGBA(image.Rect(0, 0, width, height)),
 	}
+	pane.draw = func() {
+		draw.Draw(pane.image, pane.bounds(), &image.Uniform{pane.color()}, image.ZP, draw.Src)
+	}
+	pane.bounds = func() image.Rectangle {
+		return pane.image.Bounds()
+	}
+	return pane
 }
 
 func NewFadingColorPane(in color.Color, d time.Duration) *ColorPane {
 
+	pane := NewColorPane(in)
 	start := time.Now()
-	filter := func(c color.Color) color.Color {
+	pane.color = func() color.Color {
 		n := time.Now().Sub(start)
 		ratio := 1.0
 		if n < d {
 			ratio = float64(n) / float64(d)
 		}
-		r, g, b, a := c.RGBA()
+		r, g, b, a := in.RGBA()
 		return color.RGBA{
 			R: uint8(uint16((1.0-ratio)*float64(r)) >> 8),
 			G: uint8(uint16((1.0-ratio)*float64(g)) >> 8),
@@ -43,10 +53,8 @@ func NewFadingColorPane(in color.Color, d time.Duration) *ColorPane {
 			A: uint8(a),
 		}
 	}
-	return &ColorPane{
-		color:  in,
-		image:  image.NewRGBA(image.Rect(0, 0, width, height)),
-		filter: filter,
+	return pane
+}
 	}
 }
 
@@ -55,11 +63,7 @@ func (p *ColorPane) Gesture(gesture *gestic.GestureData) {
 }
 
 func (p *ColorPane) Render() (*image.RGBA, error) {
-	filteredColor := p.color
-	if p.filter != nil {
-		filteredColor = p.filter(p.color)
-	}
-	draw.Draw(p.image, p.image.Bounds(), &image.Uniform{filteredColor}, image.ZP, draw.Src)
+	p.draw()
 	return p.image, nil
 }
 
