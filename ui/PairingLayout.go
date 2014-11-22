@@ -35,6 +35,10 @@ func (l *PairingLayout) ShowFadingColor(c color.Color, d time.Duration) {
 	l.currentPane = NewFadingColorPane(c, d)
 }
 
+func (l *PairingLayout) ShowFadingShrinkingColor(c color.Color, d time.Duration) {
+	l.currentPane = NewFadingShrinkingColorPane(c, d)
+}
+
 func (l *PairingLayout) ShowCode(text string) {
 	l.currentPane = NewPairingCodePane(text)
 }

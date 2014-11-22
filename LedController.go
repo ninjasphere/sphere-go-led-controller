@@ -207,7 +207,7 @@ func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
 	if loading {
 		c.pairingLayout.ShowIcon("loading.gif")
 	} else if fade {
-		c.pairingLayout.ShowFadingColor(col, m.Duration)
+		c.pairingLayout.ShowFadingShrinkingColor(col, m.Duration)
 	} else {
 		c.pairingLayout.ShowColor(col)
 	}
