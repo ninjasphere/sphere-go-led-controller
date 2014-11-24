@@ -30,7 +30,7 @@ type LedController struct {
 
 func NewLedController(conn *ninja.Connection) (*LedController, error) {
 
-	c := &serial.Config{Name: "/dev/tty.ledmatrix", Baud: 115200}
+	c := &serial.Config{Name: "/dev/tty.ledmatrix", Baud: 230400}
 	s, err := serial.OpenPort(c)
 	if err != nil {
 		return nil, err

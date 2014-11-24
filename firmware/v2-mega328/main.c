@@ -16,7 +16,7 @@
 
 #define OSD_DEBUG 0
 
-#define BAUD_RATE 115200
+#define BAUD_RATE 230400
 #define BAUD_UBRR (((F_CPU / (BAUD_RATE * 16UL))) - 1)
 
 #define CMD_NOP 0
@@ -420,7 +420,7 @@ int main() {
 			}
 			adc_T_old = adc_T;
 		}
-		if ((i%8)==6) 
+		if ((i%8)==6)
 			debug_bits(dimmer,8,row);
 		if ((i%8)==7) {
 			uint8_t t;
