@@ -12,11 +12,11 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#define VERSION "1.0.1"
+#define VERSION "1.0.2"
 
 #define OSD_DEBUG 0
 
-#define BAUD_RATE 230400
+#define BAUD_RATE 115200*2
 #define BAUD_UBRR (((F_CPU / (BAUD_RATE * 16UL))) - 1)
 
 #define CMD_NOP 0
