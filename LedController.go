@@ -218,6 +218,18 @@ func (c *LedController) DisplayIcon(req *IconRequest) error {
 	return nil
 }
 
+func (c *LedController) DisplayDrawing() error {
+	c.controlEnabled = false
+	c.pairingLayout.ShowDrawing()
+	return nil
+}
+
+func (c *LedController) Draw(updates *[][]uint8) error {
+	c.controlEnabled = false
+	c.pairingLayout.Draw(updates)
+	return nil
+}
+
 func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
 	c.controlEnabled = false
 	fade := m.Duration > 0 && !m.Hold

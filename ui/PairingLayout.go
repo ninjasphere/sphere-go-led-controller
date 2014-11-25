@@ -66,8 +66,8 @@ func (l *PairingLayout) ShowDrawing() {
 	}
 }
 
-func (l *PairingLayout) Draw(updates [][]uint8) {
-	for _, update := range updates {
+func (l *PairingLayout) Draw(updates *[][]uint8) {
+	for _, update := range *updates {
 		offset := l.drawing.PixOffset(int(update[0]), int(update[1]))
 		l.drawing.Pix[offset] = update[2]   // R
 		l.drawing.Pix[offset+1] = update[3] // G
