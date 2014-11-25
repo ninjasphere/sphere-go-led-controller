@@ -22,6 +22,10 @@ import (
 
 var log = logger.GetLogger("sphere-go-led-controller")
 
+var fps Tick = Tick{
+	name: "Pane FPS",
+}
+
 type LedController struct {
 	controlEnabled bool
 	controlLayout  *ui.PaneLayout
@@ -97,7 +101,11 @@ func (c *LedController) start(enableControl bool) {
 	frameWritten := make(chan bool)
 
 	go func() {
+		fps.start()
+
 		for {
+			fps.tick()
+
 			if c.controlEnabled {
 
 				if c.controlLayout == nil {
@@ -290,4 +298,23 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 	go layout.Wake()
 
 	return layout
+}
+
+type Tick struct {
+	count int
+	name  string
+}
+
+func (t *Tick) tick() {
+	t.count++
+}
+
+func (t *Tick) start() {
+	go func() {
+		for {
+			time.Sleep(time.Second)
+			log.Debugf("%s - %d", t.name, t.count)
+			t.count = 0
+		}
+	}()
 }
