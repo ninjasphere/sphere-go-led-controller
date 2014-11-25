@@ -1,10 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"time"
@@ -12,12 +12,15 @@ import (
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
+	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
 	ledmodel "github.com/ninjasphere/sphere-go-led-controller/model"
 	"github.com/ninjasphere/sphere-go-led-controller/ui"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 	"github.com/tarm/goserial"
 )
+
+var log = logger.GetLogger("sphere-go-led-controller")
 
 type LedController struct {
 	controlEnabled bool
@@ -28,30 +31,49 @@ type LedController struct {
 	waiting        chan bool
 }
 
-func NewLedController(conn *ninja.Connection) (*LedController, error) {
+func GetLEDConnection(baudRate int) (io.ReadWriteCloser, error) {
 
-	c := &serial.Config{Name: "/dev/tty.ledmatrix", Baud: 230400}
+	log.Debugf("Resetting LED Matrix")
+	cmd := exec.Command("/usr/local/bin/reset-led-matrix")
+	output, err := cmd.Output()
+	log.Debugf("Output from reset: %s", output)
+
+	c := &serial.Config{Name: "/dev/tty.ledmatrix", Baud: baudRate}
 	s, err := serial.OpenPort(c)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Printf("Resetting LED Matrix")
-	cmd := exec.Command("/usr/local/bin/reset-led-matrix")
-	output, err := cmd.Output()
-	log.Printf("Output from reset: %s err: %s", output, err)
-
 	// Now we wait for the init string
 	buf := make([]byte, 16)
 	_, err = s.Read(buf)
 	if err != nil {
-		log.Fatalf("Failed to initialisation string from led matrix : %s", err)
+		log.Fatalf("Failed to read initialisation string from led matrix : %s", err)
 	}
-	if buf[0] != byte('L') {
-		log.Fatalf("Expected an 'L', got '%s'", buf)
+	if string(buf[0:3]) != "LED" {
+		log.Infof("Expected init string 'LED', got '%s'.", buf)
+		s.Close()
+		return nil, fmt.Errorf("Bad init string..")
 	}
-	log.Printf("Read init string from LED Matrix: %s", buf)
 
+	log.Debugf("Read init string from LED Matrix: %s", buf)
+
+	return s, nil
+}
+
+const baudRate = 115200
+
+func NewLedController(conn *ninja.Connection) (*LedController, error) {
+
+	s, err := GetLEDConnection(baudRate * 2)
+
+	if err != nil {
+		log.Warningf("Failed to connect to LED using baud rate: %d, trying %d", baudRate*2, baudRate)
+		s, err = GetLEDConnection(baudRate)
+		if err != nil {
+			log.Fatalf("Failed to connect to LED display: %s", err)
+		}
+	}
 	// Send a blank image to the led matrix
 	util.WriteLEDMatrix(image.NewRGBA(image.Rect(0, 0, 16, 16)), s)
 
@@ -80,12 +102,12 @@ func (c *LedController) start(enableControl bool) {
 
 				if c.controlLayout == nil {
 
-					log.Println("Enabling layout... clearing LED")
+					log.Infof("Enabling layout... clearing LED")
 
 					util.WriteLEDMatrix(image.NewRGBA(image.Rect(0, 0, 16, 16)), c.serial)
 
 					c.controlLayout = getPaneLayout(c.conn)
-					log.Println("Finished control layout")
+					log.Infof("Finished control layout")
 				}
 
 				image, wake, err := c.controlLayout.Render()
@@ -102,22 +124,22 @@ func (c *LedController) start(enableControl bool) {
 				case <-frameWritten:
 					// All good.
 				case <-time.After(10 * time.Second):
-					log.Println("Timeout writing to LED matrix. Quitting.")
+					log.Infof("Timeout writing to LED matrix. Quitting.")
 					os.Exit(1)
 					// Timed out writing to the led matrix. For now. Boot!
 					//cmd := exec.Command("reboot")
 					//output, err := cmd.Output()
 
-					//log.Printf("Output from reboot: %s err: %s", output, err)
+					//log.Debugf("Output from reboot: %s err: %s", output, err)
 				}
 
 				if wake != nil {
-					log.Println("Waiting as the UI is asleep")
+					log.Infof("Waiting as the UI is asleep")
 					select {
 					case <-wake:
-						log.Println("UI woke up!")
+						log.Infof("UI woke up!")
 					case <-c.waiting:
-						log.Println("Got a command from rpc...")
+						log.Infof("Got a command from rpc...")
 					}
 				}
 
@@ -243,20 +265,20 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 		//layout.AddPane(ui.NewTextScrollPane("Exit Music (For A Film)"))
 
 		heaterPane := ui.NewOnOffPane("images/heater-off.png", "images/heater-on.gif", func(state bool) {
-			log.Printf("Heater state: %t", state)
+			log.Debugf("Heater state: %t", state)
 		}, conn, "heater")
 		layout.AddPane(heaterPane)
 	}
 
 	lightPane := ui.NewLightPane("images/light-off.png", "images/light-on.png", func(state bool) {
-		log.Printf("Light on-off state: %t", state)
+		log.Debugf("Light on-off state: %t", state)
 	}, func(state float64) {
-		log.Printf("Light color state: %f", state)
+		log.Debugf("Light color state: %f", state)
 	}, conn)
 	layout.AddPane(lightPane)
 
 	fanPane := ui.NewOnOffPane("images/fan-off.png", "images/fan-on.gif", func(state bool) {
-		log.Printf("Fan state: %t", state)
+		log.Debugf("Fan state: %t", state)
 	}, conn, "fan")
 
 	layout.AddPane(fanPane)
