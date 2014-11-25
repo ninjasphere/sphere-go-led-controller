@@ -49,7 +49,7 @@ func GetLEDConnection(baudRate int) (io.ReadWriteCloser, error) {
 	}
 
 	// Now we wait for the init string
-	buf := make([]byte, 16)
+	buf := make([]byte, 3)
 	_, err = s.Read(buf)
 	if err != nil {
 		log.Fatalf("Failed to read initialisation string from led matrix : %s", err)
@@ -72,7 +72,7 @@ func NewLedController(conn *ninja.Connection) (*LedController, error) {
 	s, err := GetLEDConnection(baudRate * 2)
 
 	if err != nil {
-		log.Warningf("Failed to connect to LED using baud rate: %d, trying %d", baudRate*2, baudRate)
+		log.Warningf("Failed to connect to LED using baud rate: %d, trying %d. error:%s", baudRate*2, baudRate, err)
 		s, err = GetLEDConnection(baudRate)
 		if err != nil {
 			log.Fatalf("Failed to connect to LED display: %s", err)
