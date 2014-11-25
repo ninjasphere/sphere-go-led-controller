@@ -14,10 +14,10 @@ import (
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
+	"github.com/ninjasphere/goserial"
 	ledmodel "github.com/ninjasphere/sphere-go-led-controller/model"
 	"github.com/ninjasphere/sphere-go-led-controller/ui"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
-	"github.com/tarm/goserial"
 )
 
 var log = logger.GetLogger("sphere-go-led-controller")
