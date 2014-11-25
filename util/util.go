@@ -5,6 +5,8 @@ import (
 	"io"
 	"log"
 	"math"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 var cmdWriteBuffer byte = 1
@@ -20,10 +22,7 @@ func init() {
 	}
 }
 
-// Write an image into the led matrix
-func WriteLEDMatrix(image *image.RGBA, s io.ReadWriteCloser) {
-
-	//spew.Dump("writing image", image)
+func ConvertImage(image *image.RGBA) []byte {
 
 	var frame [768]byte
 
@@ -53,6 +52,16 @@ func WriteLEDMatrix(image *image.RGBA, s io.ReadWriteCloser) {
 
 		finalFrame = append(finalFrame, line...)
 	}
+
+	return finalFrame
+}
+
+// Write an image into the led matrix
+func WriteLEDMatrix(image *image.RGBA, s io.ReadWriteCloser) {
+
+	//spew.Dump("writing image", image)
+
+	finalFrame := ConvertImage(image)
 
 	_, err := s.Write([]byte{cmdWriteBuffer})
 	if err != nil {
@@ -89,4 +98,26 @@ func split(a []byte, size int) [][]byte {
 	}
 
 	return out
+}
+
+func compress(frame []byte) []byte {
+	compressed := make([]byte, 0)
+	for i := 0; i < len(frame); i++ {
+
+		val := frame[i]
+		if val == 0 {
+
+			count := 0
+			for j := i + 1; j < len(frame) && frame[j] == val; j++ {
+				count++
+			}
+
+			compressed = append(compressed, val, byte(count))
+			i += count
+		} else {
+			compressed = append(compressed, val)
+		}
+	}
+	spew.Dump("from", frame, compressed)
+	return compressed
 }
