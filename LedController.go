@@ -258,6 +258,14 @@ func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
 	return nil
 }
 
+func (c *LedController) DisplayProgress(p *ledmodel.DisplayProgress) error {
+	c.controlEnabled = false
+
+	c.pairingLayout.ShowProgress(p.Progress, p.Icon)
+
+	return nil
+}
+
 func (c *LedController) gotCommand() {
 	select {
 	case c.waiting <- true:
