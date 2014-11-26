@@ -49,7 +49,7 @@ func GetLEDConnection(baudRate int) (io.ReadWriteCloser, error) {
 	}
 
 	// Now we wait for the init string
-	buf := make([]byte, 3)
+	buf := make([]byte, 16)
 	_, err = s.Read(buf)
 	if err != nil {
 		log.Fatalf("Failed to read initialisation string from led matrix : %s", err)
