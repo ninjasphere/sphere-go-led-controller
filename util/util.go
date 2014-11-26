@@ -2,9 +2,16 @@ package util
 
 import (
 	"image"
+	"image/color"
+	"image/draw"
+	"image/gif"
+	"image/png"
 	"io"
 	"log"
 	"math"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 )
@@ -120,4 +127,191 @@ func compress(frame []byte) []byte {
 	}
 	spew.Dump("from", frame, compressed)
 	return compressed
+}
+
+type Image interface {
+	GetNextFrame() *image.RGBA
+	GetPositionFrame(position float64, blend bool) *image.RGBA
+}
+
+type SingleImage struct {
+	frame *image.RGBA
+}
+
+func NewSingleImage(frame *image.RGBA) *SingleImage {
+	return &SingleImage{frame}
+}
+
+func (i *SingleImage) GetNextFrame() *image.RGBA {
+	return i.frame
+}
+
+func (i *SingleImage) GetPositionFrame(position float64, blend bool) *image.RGBA {
+	return i.frame
+}
+
+type AnimatedImage struct {
+	frameRequest    chan bool
+	pos             int
+	frames          []*image.RGBA
+	delays          []int
+	remainingLoops  int
+	started         bool
+	delayAdjustment float64
+}
+
+func (i *AnimatedImage) GetNextFrame() *image.RGBA {
+
+	if !i.started {
+		i.started = true
+		i.start()
+	}
+
+	log.Printf("Getting next frame: %d", i.pos)
+
+	frame := i.frames[i.pos]
+
+	select {
+	case i.frameRequest <- true:
+	default:
+	}
+
+	return frame
+}
+
+func (i *AnimatedImage) start() {
+
+	go func() {
+		for {
+
+			delay := i.delays[i.pos]
+			if delay == 0 {
+				// Wait till this frame has been taken
+				<-i.frameRequest
+			} else {
+
+				delayDuration := time.Duration(float64(i.delays[i.pos])*i.delayAdjustment) * 10 * time.Millisecond
+
+				log.Printf("Sleeping frame %d for %d", i.pos, delayDuration)
+				time.Sleep(delayDuration)
+			}
+
+			i.pos++
+
+			if i.pos >= len(i.frames) {
+				i.pos = 0
+				i.remainingLoops--
+			}
+
+			if i.remainingLoops == 0 {
+				continue
+			}
+		}
+	}()
+
+}
+
+// GetPositionFrame returns the frame corresponding to the position given 0....1
+func (i *AnimatedImage) GetPositionFrame(position float64, blend bool) *image.RGBA {
+
+	relativePosition := position * float64(len(i.frames)-1)
+
+	previousFrame := int(math.Floor(relativePosition))
+	nextFrame := int(math.Ceil(relativePosition))
+
+	framePosition := math.Mod(relativePosition, 1)
+
+	//log.Debugf("GetPositionFrame. Frames:%d Position:%f RelativePosition:%f FramePosition:%f PreviousFrame:%d NextFrame:%d", len(i.frames), position, relativePosition, framePosition, previousFrame, nextFrame)
+	if !blend || previousFrame == nextFrame {
+		// We can just send back a single frame
+		return i.frames[previousFrame]
+	}
+
+	maskNext := image.NewUniform(color.Alpha{uint8(255 * framePosition)})
+
+	frame := image.NewRGBA(image.Rect(0, 0, 16, 16))
+
+	draw.Draw(frame, frame.Bounds(), i.frames[previousFrame], image.Point{0, 0}, draw.Src)
+	draw.DrawMask(frame, frame.Bounds(), i.frames[nextFrame], image.Point{0, 0}, maskNext, image.Point{0, 0}, draw.Over)
+
+	return frame
+}
+
+func LoadImage(src string) Image {
+	return loadImage(src)
+}
+
+// TODO: Add caching?
+func loadImage(src string) Image {
+	srcLower := strings.ToLower(src)
+
+	if strings.Contains(srcLower, ".gif") {
+		return loadGif(src)
+	} else if strings.Contains(srcLower, ".png") {
+		return loadPng(src)
+	} else {
+		log.Printf("Unknown image format: %s", src)
+	}
+	return nil
+}
+
+func LoadPng(src string) Image {
+	return loadPng(src)
+}
+
+func loadPng(src string) Image {
+	file, err := os.Open(src)
+
+	if err != nil {
+		log.Printf("Could not open png '%s' : %s", src, err)
+	}
+
+	img, err := png.Decode(file)
+	if err != nil {
+		log.Printf("PNG decoding failed on image '%s' : %s", src, err)
+	}
+
+	return &SingleImage{
+		frame: toRGBA(img),
+	}
+}
+
+func LoadGif(src string) *AnimatedImage {
+	return loadGif(src)
+}
+
+func loadGif(src string) *AnimatedImage {
+	file, err := os.Open(src)
+
+	if err != nil {
+		log.Printf("Could not open gif '%s' : %s", src, err)
+	}
+
+	img, err := gif.DecodeAll(file)
+	if err != nil {
+		log.Printf("Gif decoding failed on image '%s' : %s", src, err)
+	}
+
+	var frames = []*image.RGBA{}
+
+	for _, frame := range img.Image {
+		frames = append(frames, toRGBA(frame))
+	}
+
+	spew.Dump(img.Delay)
+
+	return &AnimatedImage{
+		frames:          frames,
+		delays:          img.Delay,
+		remainingLoops:  img.LoopCount,
+		frameRequest:    make(chan bool),
+		delayAdjustment: 1.0,
+	}
+}
+
+func toRGBA(in image.Image) *image.RGBA {
+	bounds := in.Bounds()
+	out := image.NewRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
+	draw.Draw(out, out.Bounds(), in, bounds.Min, draw.Over)
+	return out
 }

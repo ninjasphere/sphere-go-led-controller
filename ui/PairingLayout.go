@@ -8,6 +8,7 @@ import (
 
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
 type PairingLayout struct {
@@ -61,14 +62,14 @@ func (l *PairingLayout) ShowIcon(image string) {
 
 func (l *PairingLayout) ShowProgress(progress float64, im string) {
 	l.currentPane = &ImagePane{
-		image: &Image{0, []*image.RGBA{loadImage("./images/"+im).GetPositionFrame(progress, true)}},
+		image: util.NewSingleImage(util.LoadImage("./images/"+im).GetPositionFrame(progress, true)),
 	}
 }
 
 func (l *PairingLayout) ShowDrawing() {
 	l.drawing = image.NewRGBA(image.Rect(0, 0, 16, 16))
 	l.currentPane = &ImagePane{
-		image: &Image{0, []*image.RGBA{l.drawing}},
+		image: util.NewSingleImage(l.drawing),
 	}
 }
 
