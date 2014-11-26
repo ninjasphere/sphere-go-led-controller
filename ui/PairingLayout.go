@@ -61,7 +61,7 @@ func (l *PairingLayout) ShowIcon(image string) {
 
 func (l *PairingLayout) ShowProgress(progress float64, im string) {
 	l.currentPane = &ImagePane{
-		image: &Image{0, []*image.RGBA{LoadImage("./images/"+im).GetPositionFrame(progress, true)}},
+		image: &Image{0, []*image.RGBA{loadImage("./images/"+im).GetPositionFrame(progress, true)}},
 	}
 }
 
