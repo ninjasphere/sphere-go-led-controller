@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"os/exec"
+	"time"
 
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/goserial"
@@ -30,11 +31,6 @@ func init() {
 }
 
 func GetLEDConnectionAtRate(baudRate int) (io.ReadWriteCloser, error) {
-
-	log.Debugf("Resetting LED Matrix")
-	cmd := exec.Command("/usr/local/bin/reset-led-matrix")
-	output, err := cmd.Output()
-	log.Debugf("Output from reset: %s", output)
 
 	c := &serial.Config{Name: "/dev/tty.ledmatrix", Baud: baudRate}
 	s, err := serial.OpenPort(c)
@@ -61,13 +57,26 @@ func GetLEDConnectionAtRate(baudRate int) (io.ReadWriteCloser, error) {
 
 func GetLEDConnection() (io.ReadWriteCloser, error) {
 
+	log.Debugf("Resetting LED Matrix")
+	cmd := exec.Command("/usr/local/bin/reset-led-matrix")
+	output, err := cmd.Output()
+	log.Debugf("Output from reset: %s", output)
+
 	s, err := GetLEDConnectionAtRate(baudRate)
 
 	if err != nil {
 		log.Warningf("Failed to connect to LED using baud rate: %d, trying %d. error:%s", baudRate, baudRate/2, err)
-		s, err = GetLEDConnectionAtRate(baudRate / 2)
-		if err != nil {
-			log.Fatalf("Failed to connect to LED display: %s", err)
+
+		for _, d := range [1,2,4] {
+			s, err = GetLEDConnectionAtRate(baudRate / 2)
+			if err == nil {
+				break;
+			}
+			if d == 4 {
+				log.Fatalf("Failed to connect to LED display: %s", err)
+			} else {
+				time.Sleep(time.Second*time.Duration(d))
+			}
 		}
 	}
 
