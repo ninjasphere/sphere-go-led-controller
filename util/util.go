@@ -16,6 +16,16 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
+// Approx framerate of the display
+const fps = 30
+
+// How long each frame is displayed for
+const frameTime = time.Second / fps
+
+// If a frame's delay is under this duration, we will display it
+// for a certain number of frames, rather than for a time.
+const adjustDelayUnder = time.Millisecond * 300
+
 var cmdWriteBuffer byte = 1
 var cmdSwapBuffers byte = 2
 
@@ -183,17 +193,26 @@ func (i *AnimatedImage) start() {
 
 	go func() {
 		for {
+			delay := time.Duration(float64(i.delays[i.pos])*i.delayAdjustment) * 10 * time.Millisecond
 
-			delay := i.delays[i.pos]
-			if delay == 0 {
-				// Wait till this frame has been taken
-				<-i.frameRequest
+			if delay < adjustDelayUnder {
+				framesToDisplayFor := int(math.Floor(float64(delay) / float64(frameTime)))
+
+				// Show for at least one frame
+				if framesToDisplayFor == 0 {
+					framesToDisplayFor = 1
+				}
+
+				//log.Printf("Frame wanted a delay of %d so showing for %d frames", delay, framesToDisplayFor)
+
+				for x := 0; x < framesToDisplayFor; x++ {
+					// Wait till this frame has been taken
+					<-i.frameRequest
+				}
+
 			} else {
-
-				delayDuration := time.Duration(float64(i.delays[i.pos])*i.delayAdjustment) * 10 * time.Millisecond
-
-				log.Printf("Sleeping frame %d for %d", i.pos, delayDuration)
-				time.Sleep(delayDuration)
+				//log.Printf("Sleeping frame %d for %d", i.pos, delay)
+				time.Sleep(delay)
 			}
 
 			i.pos++
