@@ -196,21 +196,24 @@ func (i *AnimatedImage) start() {
 			delay := time.Duration(float64(i.delays[i.pos])*i.delayAdjustment) * 10 * time.Millisecond
 
 			if delay < adjustDelayUnder {
-				framesToDisplayFor := int(math.Floor(float64(delay) / float64(frameTime)))
+
+				// Rounded to nearest int
+				framesToDisplay := int(math.Floor((float64(delay) / float64(frameTime)) + 0.5))
 
 				// Show for at least one frame
-				if framesToDisplayFor == 0 {
-					framesToDisplayFor = 1
+				if framesToDisplay == 0 {
+					framesToDisplay = 1
 				}
 
-				//log.Printf("Frame wanted a delay of %d so showing for %d frames", delay, framesToDisplayFor)
+				//log.Printf("Frame wanted a delay of %d so showing for %d frames", delay, framesToDisplay)
 
-				for x := 0; x < framesToDisplayFor; x++ {
+				for x := 0; x < framesToDisplay; x++ {
 					// Wait till this frame has been taken
 					<-i.frameRequest
 				}
 
 			} else {
+				// Just sleep. At these amounts noone will notice +-1 frame
 				//log.Printf("Sleeping frame %d for %d", i.pos, delay)
 				time.Sleep(delay)
 			}
@@ -257,17 +260,12 @@ func (i *AnimatedImage) GetPositionFrame(position float64, blend bool) *image.RG
 }
 
 func LoadImage(src string) Image {
-	return loadImage(src)
-}
-
-// TODO: Add caching?
-func loadImage(src string) Image {
 	srcLower := strings.ToLower(src)
 
 	if strings.Contains(srcLower, ".gif") {
-		return loadGif(src)
+		return LoadGif(src)
 	} else if strings.Contains(srcLower, ".png") {
-		return loadPng(src)
+		return LoadPng(src)
 	} else {
 		log.Printf("Unknown image format: %s", src)
 	}
@@ -275,10 +273,7 @@ func loadImage(src string) Image {
 }
 
 func LoadPng(src string) Image {
-	return loadPng(src)
-}
 
-func loadPng(src string) Image {
 	file, err := os.Open(src)
 
 	if err != nil {
@@ -296,10 +291,7 @@ func loadPng(src string) Image {
 }
 
 func LoadGif(src string) *AnimatedImage {
-	return loadGif(src)
-}
 
-func loadGif(src string) *AnimatedImage {
 	file, err := os.Open(src)
 
 	if err != nil {
@@ -316,8 +308,6 @@ func loadGif(src string) *AnimatedImage {
 	for _, frame := range img.Image {
 		frames = append(frames, toRGBA(frame))
 	}
-
-	spew.Dump(img.Delay)
 
 	return &AnimatedImage{
 		frames:          frames,
