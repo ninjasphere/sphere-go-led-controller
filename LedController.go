@@ -1,12 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"io"
 	"os"
-	"os/exec"
 	"time"
 
 	"github.com/lucasb-eyer/go-colorful"
@@ -14,7 +12,6 @@ import (
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
-	"github.com/ninjasphere/goserial"
 	ledmodel "github.com/ninjasphere/sphere-go-led-controller/model"
 	"github.com/ninjasphere/sphere-go-led-controller/ui"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
@@ -35,55 +32,20 @@ type LedController struct {
 	waiting        chan bool
 }
 
-func GetLEDConnection(baudRate int) (io.ReadWriteCloser, error) {
-
-	log.Debugf("Resetting LED Matrix")
-	cmd := exec.Command("/usr/local/bin/reset-led-matrix")
-	output, err := cmd.Output()
-	log.Debugf("Output from reset: %s", output)
-
-	c := &serial.Config{Name: "/dev/tty.ledmatrix", Baud: baudRate}
-	s, err := serial.OpenPort(c)
-	if err != nil {
-		return nil, err
-	}
-
-	// Now we wait for the init string
-	buf := make([]byte, 16)
-	_, err = s.Read(buf)
-	if err != nil {
-		log.Fatalf("Failed to read initialisation string from led matrix : %s", err)
-	}
-	if string(buf[0:3]) != "LED" {
-		log.Infof("Expected init string 'LED', got '%s'.", buf)
-		s.Close()
-		return nil, fmt.Errorf("Bad init string..")
-	}
-
-	log.Debugf("Read init string from LED Matrix: %s", buf)
-
-	return s, nil
-}
-
-const baudRate = 115200
-
 func NewLedController(conn *ninja.Connection) (*LedController, error) {
 
-	s, err := GetLEDConnection(baudRate * 2)
+	s, err := util.GetLEDConnection()
 
 	if err != nil {
-		log.Warningf("Failed to connect to LED using baud rate: %d, trying %d. error:%s", baudRate*2, baudRate, err)
-		s, err = GetLEDConnection(baudRate)
-		if err != nil {
-			log.Fatalf("Failed to connect to LED display: %s", err)
-		}
+		log.Fatalf("Failed to get connection to LED matrix: %s", err)
 	}
+
 	// Send a blank image to the led matrix
 	util.WriteLEDMatrix(image.NewRGBA(image.Rect(0, 0, 16, 16)), s)
 
 	controller := &LedController{
 		conn:          conn,
-		pairingLayout: ui.NewPairingLayout(conn),
+		pairingLayout: ui.NewPairingLayout(),
 		serial:        s,
 		waiting:       make(chan bool),
 	}
@@ -275,7 +237,7 @@ func (c *LedController) gotCommand() {
 
 // Load from a config file instead...
 func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
-	layout, wake := ui.NewPaneLayout(false)
+	layout, wake := ui.NewPaneLayout(false, conn)
 
 	mediaPane := ui.NewMediaPane(&ui.MediaPaneImages{
 		Volume: "images/media-volume-speaker.gif",

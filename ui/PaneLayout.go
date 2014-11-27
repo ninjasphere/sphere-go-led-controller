@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ninjasphere/go-gestic"
+	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
@@ -38,7 +39,10 @@ type PaneLayout struct {
 	gestures *Tick
 }
 
-func NewPaneLayout(fakeGestures bool) (*PaneLayout, chan (bool)) {
+func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan (bool)) {
+
+	startSearchTasks(conn)
+
 	pane := &PaneLayout{
 		fps: &Tick{
 			name: "Pane FPS",

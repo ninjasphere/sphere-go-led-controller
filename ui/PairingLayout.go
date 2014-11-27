@@ -6,24 +6,20 @@ import (
 
 	"time"
 
-	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
 type PairingLayout struct {
 	currentPane Pane
-	conn        *ninja.Connection
 	log         *logger.Logger
 	drawing     *image.RGBA
 }
 
-func NewPairingLayout(c *ninja.Connection) *PairingLayout {
-	startSearchTasks(c)
+func NewPairingLayout() *PairingLayout {
 
 	layout := &PairingLayout{
-		log:  logger.GetLogger("PaneLayout"),
-		conn: c,
+		log: logger.GetLogger("PaneLayout"),
 	}
 	layout.ShowIcon("loading.gif")
 
