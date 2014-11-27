@@ -8,7 +8,7 @@ import (
 	"os/exec"
 
 	"github.com/ninjasphere/go-ninja/logger"
-	"github.com/tarm/goserial"
+	"github.com/ninjasphere/goserial"
 )
 
 var log = logger.GetLogger("led-matrix")
@@ -64,7 +64,7 @@ func GetLEDConnection() (io.ReadWriteCloser, error) {
 	s, err := GetLEDConnectionAtRate(baudRate)
 
 	if err != nil {
-		log.Warningf("Failed to connect to LED using baud rate: %d, trying %d. error:%s", baudRate*2, baudRate, err)
+		log.Warningf("Failed to connect to LED using baud rate: %d, trying %d. error:%s", baudRate, baudRate/2, err)
 		s, err = GetLEDConnectionAtRate(baudRate / 2)
 		if err != nil {
 			log.Fatalf("Failed to connect to LED display: %s", err)
