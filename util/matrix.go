@@ -67,15 +67,15 @@ func GetLEDConnection() (io.ReadWriteCloser, error) {
 	if err != nil {
 		log.Warningf("Failed to connect to LED using baud rate: %d, trying %d. error:%s", baudRate, baudRate/2, err)
 
-		for _, d := range [1,2,4] {
+		for _, d := range []int{1, 2, 4} {
 			s, err = GetLEDConnectionAtRate(baudRate / 2)
 			if err == nil {
-				break;
+				break
 			}
 			if d == 4 {
 				log.Fatalf("Failed to connect to LED display: %s", err)
 			} else {
-				time.Sleep(time.Second*time.Duration(d))
+				time.Sleep(time.Second * time.Duration(d))
 			}
 		}
 	}
