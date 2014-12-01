@@ -7,6 +7,7 @@ import (
 	"math"
 	"os/exec"
 	"time"
+	"strings"
 
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/goserial"
@@ -37,6 +38,9 @@ func GetLEDConnectionAtRate(baudRate int) (io.ReadWriteCloser, error) {
 	if err != nil {
 		return nil, err
 	}
+	
+	// Wait a little bit, to make sure we actually receive the startup data, and in one go
+	time.Sleep(time.Millisecond * 500)
 
 	// Now we wait for the init string
 	buf := make([]byte, 16)
@@ -44,8 +48,11 @@ func GetLEDConnectionAtRate(baudRate int) (io.ReadWriteCloser, error) {
 	if err != nil {
 		log.Fatalf("Failed to read initialisation string from led matrix : %s", err)
 	}
-	if string(buf[0:3]) != "LED" {
-		log.Infof("Expected init string 'LED', got '%s'.", buf)
+	
+	// on 3.12 we get a \x00 before the 'LED' init string, so we just check for existance now
+	initString := string(buf)
+	if strings.Contains(initString, "LED") {
+		log.Infof("Expected init string to contain 'LED', got '%s'.", initString)
 		s.Close()
 		return nil, fmt.Errorf("Bad init string..")
 	}
