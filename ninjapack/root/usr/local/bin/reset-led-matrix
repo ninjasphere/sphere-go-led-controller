@@ -1,7 +1,7 @@
 #!/bin/sh
 
 KERNEL=$(uname -r)
-KERNEL=${KERNEL/-*/}
+KERNEL=${KERNEL%%-*}
 if test "$KERNEL" = "3.2.0"; then
 	# this setup is not required with later kernels because the device tree does the equivalent
 	# of this
