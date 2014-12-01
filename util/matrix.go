@@ -58,7 +58,11 @@ func GetLEDConnectionAtRate(baudRate int) (io.ReadWriteCloser, error) {
 func GetLEDConnection() (io.ReadWriteCloser, error) {
 
 	log.Debugf("Resetting LED Matrix")
-	cmd := exec.Command("/usr/local/bin/reset-led-matrix")
+	resetLedMatrix, err := exec.LookPath("reset-led-matrix")
+	if err != nil {
+	   return nil, err
+	}
+	cmd := exec.Command(resetLedMatrix)
 	output, err := cmd.Output()
 	log.Debugf("Output from reset: %s", output)
 
