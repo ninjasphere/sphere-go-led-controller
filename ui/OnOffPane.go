@@ -8,6 +8,7 @@ import (
 	"github.com/ninjasphere/go-gestic"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
 type OnOffPane struct {
@@ -19,8 +20,8 @@ type OnOffPane struct {
 	state         bool
 	onStateChange func(bool)
 
-	onImage  *Image
-	offImage *Image
+	onImage  util.Image
+	offImage util.Image
 
 	ignoringGestures bool
 }
@@ -30,8 +31,8 @@ func NewOnOffPane(offImage string, onImage string, onStateChange func(bool), con
 	log := logger.GetLogger("OnOffPane")
 
 	pane := &OnOffPane{
-		onImage:       loadImage(onImage),
-		offImage:      loadImage(offImage),
+		onImage:       util.LoadImage(onImage),
+		offImage:      util.LoadImage(offImage),
 		onStateChange: onStateChange,
 		log:           log,
 		devices:       make([]*ninja.ServiceClient, 0),

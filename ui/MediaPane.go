@@ -11,6 +11,7 @@ import (
 	"github.com/ninjasphere/go-gestic"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/channels"
+	"github.com/ninjasphere/sphere-go-led-controller/util"
 
 	"github.com/ninjasphere/go-ninja/logger"
 )
@@ -32,18 +33,18 @@ type MediaPane struct {
 	lastAirWheel     *uint8
 
 	volume         float64
-	volumeImage    *Image
-	muteImage      *Image
+	volumeImage    util.Image
+	muteImage      util.Image
 	lastVolumeTime time.Time
 	lastSentVolume float64
 
 	ignoringTap    bool
 	ignoreTapTimer *time.Timer
 	playingState   string
-	playImage      *Image
-	pauseImage     *Image
-	stopImage      *Image
-	nextImage      *Image
+	playImage      util.Image
+	pauseImage     util.Image
+	stopImage      util.Image
+	nextImage      util.Image
 
 	gestureSync *sync.Mutex
 
@@ -70,12 +71,12 @@ func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 		conn:           conn,
 		gestureSync:    &sync.Mutex{},
 
-		volumeImage: loadImage(images.Volume),
-		muteImage:   loadImage(images.Mute),
-		playImage:   loadImage(images.Play),
-		pauseImage:  loadImage(images.Pause),
-		stopImage:   loadImage(images.Stop),
-		nextImage:   loadImage(images.Next),
+		volumeImage: util.LoadImage(images.Volume),
+		muteImage:   util.LoadImage(images.Mute),
+		playImage:   util.LoadImage(images.Play),
+		pauseImage:  util.LoadImage(images.Pause),
+		stopImage:   util.LoadImage(images.Stop),
+		nextImage:   util.LoadImage(images.Next),
 
 		playingState: "stopped",
 

@@ -2,127 +2,12 @@ package ui
 
 import (
 	"encoding/json"
-	"image"
-	"image/color"
-	"image/draw"
-	"image/gif"
-	"image/png"
 	"log"
-	"math"
-	"os"
-	"strings"
 	"time"
 
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/model"
 )
-
-type Image struct {
-	pos    int
-	frames []*image.RGBA
-}
-
-func (i *Image) GetNextFrame() *image.RGBA {
-	i.pos++
-	if i.pos >= len(i.frames) {
-		i.pos = 0
-	}
-	return i.frames[i.pos]
-}
-
-// GetPositionFrame returns the frame corresponding to the position given 0....1
-func (i *Image) GetPositionFrame(position float64, blend bool) *image.RGBA {
-
-	relativePosition := position * float64(len(i.frames)-1)
-
-	previousFrame := int(math.Floor(relativePosition))
-	nextFrame := int(math.Ceil(relativePosition))
-
-	framePosition := math.Mod(relativePosition, 1)
-
-	//log.Debugf("GetPositionFrame. Frames:%d Position:%f RelativePosition:%f FramePosition:%f PreviousFrame:%d NextFrame:%d", len(i.frames), position, relativePosition, framePosition, previousFrame, nextFrame)
-	if !blend || previousFrame == nextFrame {
-		// We can just send back a single frame
-		return i.frames[previousFrame]
-	}
-
-	maskNext := image.NewUniform(color.Alpha{uint8(255 * framePosition)})
-
-	frame := image.NewRGBA(image.Rect(0, 0, 16, 16))
-
-	draw.Draw(frame, frame.Bounds(), i.frames[previousFrame], image.Point{0, 0}, draw.Src)
-	draw.DrawMask(frame, frame.Bounds(), i.frames[nextFrame], image.Point{0, 0}, maskNext, image.Point{0, 0}, draw.Over)
-
-	return frame
-}
-
-func (i *Image) GetNumFrames() int {
-	return len(i.frames)
-}
-
-func (i *Image) GetFrame(frame int) *image.RGBA {
-	return i.frames[frame]
-}
-
-func loadImage(src string) *Image {
-	srcLower := strings.ToLower(src)
-
-	if strings.Contains(srcLower, ".gif") {
-		return loadGif(src)
-	} else if strings.Contains(srcLower, ".png") {
-		return loadPng(src)
-	} else {
-		log.Printf("Unknown image format: %s", src)
-	}
-	return nil
-}
-
-func loadPng(src string) *Image {
-	file, err := os.Open(src)
-
-	if err != nil {
-		log.Printf("Could not open png '%s' : %s", src, err)
-	}
-
-	img, err := png.Decode(file)
-	if err != nil {
-		log.Printf("PNG decoding failed on image '%s' : %s", src, err)
-	}
-
-	return &Image{
-		frames: []*image.RGBA{toRGBA(img)},
-	}
-}
-
-func loadGif(src string) *Image {
-	file, err := os.Open(src)
-
-	if err != nil {
-		log.Printf("Could not open gif '%s' : %s", src, err)
-	}
-
-	img, err := gif.DecodeAll(file)
-	if err != nil {
-		log.Printf("Gif decoding failed on image '%s' : %s", src, err)
-	}
-
-	var frames = []*image.RGBA{}
-
-	for _, frame := range img.Image {
-		frames = append(frames, toRGBA(frame))
-	}
-
-	return &Image{
-		frames: frames,
-	}
-}
-
-func toRGBA(in image.Image) *image.RGBA {
-	bounds := in.Bounds()
-	out := image.NewRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
-	draw.Draw(out, out.Bounds(), in, bounds.Min, draw.Over)
-	return out
-}
 
 /*
 type Thing struct {

@@ -4,15 +4,16 @@ import (
 	"image"
 
 	"github.com/ninjasphere/go-gestic"
+	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
 type ImagePane struct {
-	image *Image
+	image util.Image
 }
 
 func NewImagePane(image string) *ImagePane {
 	return &ImagePane{
-		image: loadImage(image),
+		image: util.LoadImage(image),
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-ninja/devices"
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
 var onOffRate = &throttle{delay: time.Millisecond * 250}
@@ -33,16 +34,16 @@ type LightPane struct {
 	colorState         float64
 	onColorStateChange func(float64)
 
-	onImage  *Image
-	offImage *Image
+	onImage  util.Image
+	offImage util.Image
 }
 
 func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool), onColorStateChange func(float64), conn *ninja.Connection) *LightPane {
 
 	log := logger.GetLogger("LightPane")
 	pane := &LightPane{
-		onImage:            loadImage(onImage),
-		offImage:           loadImage(offImage),
+		onImage:            util.LoadImage(onImage),
+		offImage:           util.LoadImage(offImage),
 		onOnOffStateChange: onOnOffStateChange,
 		onColorStateChange: onColorStateChange,
 		log:                log,
