@@ -10,7 +10,6 @@ type ResetMode struct {
 	Duration time.Duration `json:"duration"`
 }
 
-type DisplayProgress struct {
+type DisplayUpdateProgress struct {
 	Progress float64 `json:"progress"`
-	Icon     string  `json:"icon"`
 }

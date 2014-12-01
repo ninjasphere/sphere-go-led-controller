@@ -220,10 +220,10 @@ func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
 	return nil
 }
 
-func (c *LedController) DisplayProgress(p *ledmodel.DisplayProgress) error {
+func (c *LedController) DisplayUpdateProgress(p *ledmodel.DisplayUpdateProgress) error {
 	c.controlEnabled = false
 
-	c.pairingLayout.ShowProgress(p.Progress, p.Icon)
+	c.pairingLayout.ShowUpdateProgress(p.Progress)
 
 	return nil
 }

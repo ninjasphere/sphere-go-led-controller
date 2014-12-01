@@ -11,15 +11,17 @@ import (
 )
 
 type PairingLayout struct {
-	currentPane Pane
-	log         *logger.Logger
-	drawing     *image.RGBA
+	progressPane *UpdateProgressPane
+	currentPane  Pane
+	log          *logger.Logger
+	drawing      *image.RGBA
 }
 
 func NewPairingLayout() *PairingLayout {
 
 	layout := &PairingLayout{
-		log: logger.GetLogger("PaneLayout"),
+		log:          logger.GetLogger("PaneLayout"),
+		progressPane: NewUpdateProgressPane("./images/update-progress.gif", "./images/update-loop.gif"),
 	}
 	layout.ShowIcon("loading.gif")
 
@@ -56,10 +58,9 @@ func (l *PairingLayout) ShowIcon(image string) {
 	l.currentPane = NewImagePane("./images/" + image)
 }
 
-func (l *PairingLayout) ShowProgress(progress float64, im string) {
-	l.currentPane = &ImagePane{
-		image: util.NewSingleImage(util.LoadImage("./images/"+im).GetPositionFrame(progress, true)),
-	}
+func (l *PairingLayout) ShowUpdateProgress(progress float64) {
+	l.progressPane.progress = progress
+	l.currentPane = l.progressPane
 }
 
 func (l *PairingLayout) ShowDrawing() {
