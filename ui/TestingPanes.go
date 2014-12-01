@@ -191,7 +191,7 @@ func (p *PairingCodePane) Gesture(gesture *gestic.GestureData) {
 func (p *PairingCodePane) Render() (*image.RGBA, error) {
 	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
 
-	log.Printf("Rendering text '%s'")
+	log.Printf("Rendering text '%s'", text)
 
 	start := 8 - int((float64(p.textWidth) / float64(2)))
 
