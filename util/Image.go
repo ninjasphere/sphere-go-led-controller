@@ -108,7 +108,7 @@ func (i *AnimatedImage) start() {
 			}
 
 			if i.remainingLoops == 0 {
-				continue
+				break
 			}
 		}
 	}()
