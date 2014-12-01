@@ -111,6 +111,8 @@ func (i *AnimatedImage) start() {
 					// We're done, this frame gets shown forever *drops mic*.
 					break
 				}
+			} else {
+				i.pos++
 			}
 
 		}
