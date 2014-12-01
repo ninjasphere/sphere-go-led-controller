@@ -100,16 +100,24 @@ func (i *AnimatedImage) start() {
 				time.Sleep(delay)
 			}
 
-			i.pos++
+			// That was the last frame
+			if i.pos == len(i.frames)-1 {
 
-			if i.pos >= len(i.frames) {
-				i.pos = 0
-				i.remainingLoops--
+				if i.remainingLoops == -1 {
+					// Start again, we are looping forever
+					i.pos = 0
+				} else if i.remainingLoops > 0 {
+					// Start again, we still have at least one loop remaining
+					i.pos = 0
+					i.remainingLoops--
+				} else {
+					// We're done, this frame gets shown forever *drops mic*.
+					break
+				}
+			} else {
+				i.pos++
 			}
 
-			if i.remainingLoops == 0 {
-				continue
-			}
 		}
 	}()
 
@@ -191,10 +199,15 @@ func LoadGif(src string) *AnimatedImage {
 		frames = append(frames, toRGBA(frame))
 	}
 
+	loops := img.LoopCount
+	if loops == 0 {
+		loops = -1
+	}
+
 	return &AnimatedImage{
 		frames:          frames,
 		delays:          img.Delay,
-		remainingLoops:  img.LoopCount,
+		remainingLoops:  loops,
 		frameRequest:    make(chan bool),
 		delayAdjustment: 1.0,
 	}
