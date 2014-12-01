@@ -51,7 +51,7 @@ func GetLEDConnectionAtRate(baudRate int) (io.ReadWriteCloser, error) {
 	
 	// on 3.12 we get a \x00 before the 'LED' init string, so we just check for existance now
 	initString := string(buf)
-	if strings.Contains(initString, "LED") {
+	if !strings.Contains(initString, "LED") {
 		log.Infof("Expected init string to contain 'LED', got '%s'.", initString)
 		s.Close()
 		return nil, fmt.Errorf("Bad init string..")
