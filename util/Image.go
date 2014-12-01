@@ -100,16 +100,19 @@ func (i *AnimatedImage) start() {
 				time.Sleep(delay)
 			}
 
-			i.pos++
+			// That was the last frame
+			if i.pos == len(i.frames)-1 {
 
-			if i.pos >= len(i.frames) {
-				i.pos = 0
-				i.remainingLoops--
+				if i.remainingLoops > 0 {
+					// Start again, we still have at least one loop remaining
+					i.pos = 0
+					i.remainingLoops--
+				} else {
+					// We're done, this frame gets shown forever *drops mic*.
+					break
+				}
 			}
 
-			if i.remainingLoops == 0 {
-				break
-			}
 		}
 	}()
 
