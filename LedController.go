@@ -240,12 +240,12 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 	layout, wake := ui.NewPaneLayout(false, conn)
 
 	mediaPane := ui.NewMediaPane(&ui.MediaPaneImages{
-		Volume: "images/media-volume-speaker.gif",
-		Mute:   "images/media-volume-mute.png",
-		Play:   "images/media-play.png",
-		Pause:  "images/media-pause.png",
-		Stop:   "images/media-stop.png",
-		Next:   "images/media-next.png",
+		Volume: util.ResolveImagePath("media-volume-speaker.gif"),
+		Mute:   util.ResolveImagePath("media-volume-mute.png"),
+		Play:   util.ResolveImagePath("media-play.png"),
+		Pause:  util.ResolveImagePath("media-pause.png"),
+		Stop:   util.ResolveImagePath("media-stop.png"),
+		Next:   util.ResolveImagePath("media-next.png"),
 	}, conn)
 	layout.AddPane(mediaPane)
 
@@ -254,20 +254,20 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 	} else {
 		//layout.AddPane(ui.NewTextScrollPane("Exit Music (For A Film)"))
 
-		heaterPane := ui.NewOnOffPane("images/heater-off.png", "images/heater-on.gif", func(state bool) {
+		heaterPane := ui.NewOnOffPane(util.ResolveImagePath("heater-off.png"), util.ResolveImagePath("heater-on.gif"), func(state bool) {
 			log.Debugf("Heater state: %t", state)
 		}, conn, "heater")
 		layout.AddPane(heaterPane)
 	}
 
-	lightPane := ui.NewLightPane("images/light-off.png", "images/light-on.png", func(state bool) {
+	lightPane := ui.NewLightPane(util.ResolveImagePath("light-off.png"), util.ResolveImagePath("light-on.png"), func(state bool) {
 		log.Debugf("Light on-off state: %t", state)
 	}, func(state float64) {
 		log.Debugf("Light color state: %f", state)
 	}, conn)
 	layout.AddPane(lightPane)
 
-	fanPane := ui.NewOnOffPane("images/fan-off.png", "images/fan-on.gif", func(state bool) {
+	fanPane := ui.NewOnOffPane(util.ResolveImagePath("fan-off.png"), util.ResolveImagePath("fan-on.gif"), func(state bool) {
 		log.Debugf("Fan state: %t", state)
 	}, conn, "fan")
 

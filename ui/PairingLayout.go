@@ -21,7 +21,7 @@ func NewPairingLayout() *PairingLayout {
 
 	layout := &PairingLayout{
 		log:          logger.GetLogger("PaneLayout"),
-		progressPane: NewUpdateProgressPane("./images/update-progress.gif", "./images/update-loop.gif"),
+		progressPane: NewUpdateProgressPane(util.ResolveImagePath("update-progress.gif"), util.ResolveImagePath("update-loop.gif")),
 	}
 	layout.ShowIcon("loading.gif")
 
@@ -55,7 +55,7 @@ func (l *PairingLayout) ShowCode(text string) {
 }
 
 func (l *PairingLayout) ShowIcon(image string) {
-	l.currentPane = NewImagePane("./images/" + image)
+	l.currentPane = NewImagePane(util.ResolveImagePath(image))
 }
 
 func (l *PairingLayout) ShowUpdateProgress(progress float64) {
