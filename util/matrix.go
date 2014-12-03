@@ -1,13 +1,14 @@
 package util
 
 import (
+	"bufio"
 	"fmt"
 	"image"
 	"io"
 	"math"
 	"os/exec"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/goserial"
@@ -33,65 +34,72 @@ func init() {
 
 func GetLEDConnectionAtRate(baudRate int) (io.ReadWriteCloser, error) {
 
+	log.Infof("Connecting to LED using baud rate: %d", baudRate)
+
 	c := &serial.Config{Name: "/dev/tty.ledmatrix", Baud: baudRate}
 	s, err := serial.OpenPort(c)
 	if err != nil {
 		return nil, err
 	}
-	
-	// Wait a little bit, to make sure we actually receive the startup data, and in one go
-	time.Sleep(time.Millisecond * 500)
 
-	// Now we wait for the init string
-	buf := make([]byte, 16)
-	_, err = s.Read(buf)
-	if err != nil {
-		log.Fatalf("Failed to read initialisation string from led matrix : %s", err)
-	}
-	
-	// on 3.12 we get a \x00 before the 'LED' init string, so we just check for existance now
-	initString := string(buf)
-	if !strings.Contains(initString, "LED") {
-		log.Infof("Expected init string to contain 'LED', got '%s'.", initString)
+	init := make(chan string)
+	failed := make(chan error)
+	go func() {
+		reader := bufio.NewReader(s)
+		str, err := reader.ReadString('\n')
+		if err != nil {
+			failed <- err
+		} else {
+			init <- str
+		}
+	}()
+
+	select {
+	case err := <-failed:
+		log.Infof("Failed reading init string from LED matrix: %s", err)
+		return nil, err
+	case initStr := <-init:
+		log.Infof("Read init string from LED matrix: %s", initStr)
+
+		if !strings.Contains(initStr, "LED") {
+			return nil, fmt.Errorf("Bad init string... '%s'", initStr)
+		}
+
+		return s, nil
+	case <-time.After(time.Second * 3):
+		log.Warningf("Timeout waiting for LED matrix init string.")
 		s.Close()
 		return nil, fmt.Errorf("Bad init string..")
 	}
 
-	log.Debugf("Read init string from LED Matrix: %s", buf)
-
-	return s, nil
 }
 
 func GetLEDConnection() (io.ReadWriteCloser, error) {
 
-	log.Debugf("Resetting LED Matrix")
 	resetLedMatrix, err := exec.LookPath("reset-led-matrix")
 	if err != nil {
-	   return nil, err
+		return nil, err
 	}
-	cmd := exec.Command(resetLedMatrix)
-	output, err := cmd.Output()
-	log.Debugf("Output from reset: %s", output)
 
-	s, err := GetLEDConnectionAtRate(baudRate)
+	for _, d := range []int{1, 2, 4} {
+		for _, baud := range []int{baudRate, baudRate / 2} {
 
-	if err != nil {
-		log.Warningf("Failed to connect to LED using baud rate: %d, trying %d. error:%s", baudRate, baudRate/2, err)
+			cmd := exec.Command(resetLedMatrix)
+			_, err = cmd.Output()
 
-		for _, d := range []int{1, 2, 4} {
-			s, err = GetLEDConnectionAtRate(baudRate / 2)
+			s, err := GetLEDConnectionAtRate(baud)
 			if err == nil {
-				break
+				return s, nil
 			}
-			if d == 4 {
-				log.Fatalf("Failed to connect to LED display: %s", err)
-			} else {
-				time.Sleep(time.Second * time.Duration(d))
-			}
+
+			log.Warningf("Connection to LED matrix failed at %d. Sleeping for %d seconds.", baud, d)
+
+			time.Sleep(time.Second * time.Duration(d))
 		}
 	}
 
-	return s, err
+	log.Fatalf("Failed to connect to LED matrix")
+	return nil, nil
 }
 
 func ConvertImage(image *image.RGBA) []byte {
