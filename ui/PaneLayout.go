@@ -59,7 +59,7 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 	if !fakeGestures {
 		gestic.ResetDevice()
 		reader := gestic.NewReader(logger.GetLogger("Gestic"), pane.OnGesture)
-		go reader.Start()
+		go reader.MaybeStart()
 	}
 
 	// Check for sleep timeout
