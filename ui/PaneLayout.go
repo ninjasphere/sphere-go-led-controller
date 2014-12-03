@@ -61,7 +61,8 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 		reader := gestic.NewReader(logger.GetLogger("Gestic"), pane.OnGesture)
 		err := reader.MaybeStart()
 		if err != nil {
-			fakeGestures = true
+			pane.log.Warningf("Could not connect to the gesture board: %s", err)
+			//fakeGestures = true
 		}
 	}
 
