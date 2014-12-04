@@ -60,19 +60,20 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 	if !fakeGestures {
 		g, err := gestic.Open()
 		if err != nil {
-			log.Fatalf("Could not connect to GestIC device: %s\n", err)
+			pane.log.Warningf("Error enabling gestures: %s\n", err)
+		} else {
+			defer g.Close()
+
+			pane.log.Infof("Succesfully connected to GestIC device")
+
+			gestures := g.DataStream()
+
+			go func() {
+				for gesture := range gestures {
+					pane.OnGesture(&gesture)
+				}
+			}()
 		}
-		defer g.Close()
-
-		log.Println("Succesfully connected to GestIC device")
-
-		gestures := g.DataStream()
-
-		go func() {
-			for gesture := range gestures {
-				pane.OnGesture(&gesture)
-			}
-		}()
 	}
 
 	// Check for sleep timeout
