@@ -62,7 +62,7 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 		if err != nil {
 			pane.log.Warningf("Error enabling gestures: %s\n", err)
 		} else {
-			defer g.Close()
+			//defer g.Close()
 
 			pane.log.Infof("Succesfully connected to GestIC device")
 
