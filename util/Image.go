@@ -44,6 +44,27 @@ func (i *SingleImage) GetPositionFrame(position float64, blend bool) *image.RGBA
 	return i.frame
 }
 
+/* MaskImage wraps an image so that the red level is used as the transparency.
+It allows animated gifs to be used as masks, with 255 levels of alpha. */
+type MaskImage struct {
+	Image Image
+}
+
+func (i *MaskImage) GetNextFrame() *image.RGBA {
+	in := i.Image.GetNextFrame()
+	out := image.NewRGBA(image.Rect(0, 0, 16, 16))
+
+	for pos := 0; (pos + 4) < len(in.Pix); pos = pos + 4 {
+		out.Pix[pos+4] = in.Pix[pos]
+	}
+
+	return out
+}
+
+func (i *MaskImage) GetPositionFrame(position float64, blend bool) *image.RGBA {
+	return i.Image.GetPositionFrame(position, blend)
+}
+
 type AnimatedImage struct {
 	frameRequest    chan bool
 	pos             int

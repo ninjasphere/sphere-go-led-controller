@@ -25,6 +25,15 @@ func NewPairingLayout() *PairingLayout {
 	}
 	layout.ShowIcon("loading.gif")
 
+	/*	go func() {
+		time.Sleep(time.Second * 5)
+
+		c, _ := colorful.Hex("#517AB8")
+
+		layout.ShowColor(c)
+
+	}()*/
+
 	/*go func() {
 		progress := 0.0
 		for {
@@ -53,7 +62,7 @@ func NewPairingLayout() *PairingLayout {
 }
 
 func (l *PairingLayout) ShowColor(c color.Color) {
-	l.currentPane = NewColorPane(c)
+	l.currentPane = NewPairingColorPane("./images/color-mask.gif", c)
 }
 
 func (l *PairingLayout) ShowFadingColor(c color.Color, d time.Duration) {
