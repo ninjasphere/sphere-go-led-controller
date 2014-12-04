@@ -3,7 +3,7 @@ package ui
 import (
 	"image"
 
-	"github.com/ninjasphere/go-gestic"
+	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
@@ -17,7 +17,7 @@ func NewImagePane(image string) *ImagePane {
 	}
 }
 
-func (p *ImagePane) Gesture(gesture *gestic.GestureData) {
+func (p *ImagePane) Gesture(gesture *gestic.GestureMessage) {
 }
 
 func (p *ImagePane) Render() (*image.RGBA, error) {

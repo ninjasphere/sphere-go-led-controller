@@ -9,7 +9,7 @@ import (
 	"regexp"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/ninjasphere/go-gestic"
+	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/go-ninja/bus"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/sphere-go-led-controller/fonts/O4b03b"
@@ -50,7 +50,7 @@ func NewCertPane(conn bus.Bus) *CertPane {
 	return pane
 }
 
-func (p *CertPane) Gesture(gesture *gestic.GestureData) {
+func (p *CertPane) Gesture(gesture *gestic.GestureMessage) {
 
 }
 

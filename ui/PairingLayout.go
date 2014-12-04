@@ -25,13 +25,36 @@ func NewPairingLayout() *PairingLayout {
 	}
 	layout.ShowIcon("loading.gif")
 
+	/*	go func() {
+		time.Sleep(time.Second * 5)
+
+		c, _ := colorful.Hex("#517AB8")
+
+		layout.ShowColor(c)
+
+	}()*/
+
+	/*go func() {
+		progress := 0.0
+		for {
+			time.Sleep(time.Millisecond * 30)
+			layout.ShowUpdateProgress(progress)
+			progress = progress + 0.01
+			if progress >= 1 {
+				layout.ShowUpdateProgress(1)
+				break
+			}
+		}
+	}()*/
+
 	/*go func() {
 		time.Sleep(time.Second * 1)
 		layout.ShowDrawing()
 		for {
 			time.Sleep(time.Millisecond * 2)
 			update := []uint8{uint8(rand.Intn(16)), uint8(rand.Intn(16)), uint8(rand.Intn(255)), uint8(rand.Intn(255)), uint8(rand.Intn(255))}
-			layout.Draw([][]uint8{update})
+			frames := [][]uint8{update}
+			layout.Draw(&frames)
 		}
 	}()*/
 
@@ -39,7 +62,7 @@ func NewPairingLayout() *PairingLayout {
 }
 
 func (l *PairingLayout) ShowColor(c color.Color) {
-	l.currentPane = NewColorPane(c)
+	l.currentPane = NewPairingColorPane("./images/color-mask.gif", c)
 }
 
 func (l *PairingLayout) ShowFadingColor(c color.Color, d time.Duration) {

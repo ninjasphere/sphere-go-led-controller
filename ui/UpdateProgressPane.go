@@ -2,9 +2,10 @@ package ui
 
 import (
 	"image"
+	"image/color"
 	"image/draw"
 
-	"github.com/ninjasphere/go-gestic"
+	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
@@ -21,14 +22,20 @@ func NewUpdateProgressPane(progressImage string, loopingImage string) *UpdatePro
 	}
 }
 
-func (p *UpdateProgressPane) Gesture(gesture *gestic.GestureData) {
+func (p *UpdateProgressPane) Gesture(gesture *gestic.GestureMessage) {
 }
 
 func (p *UpdateProgressPane) Render() (*image.RGBA, error) {
 	frame := image.NewRGBA(image.Rect(0, 0, 16, 16))
+	draw.Draw(frame, frame.Bounds(), &image.Uniform{color.RGBA{
+		R: 0,
+		G: 0,
+		B: 0,
+		A: 255,
+	}}, image.ZP, draw.Src)
 
-	draw.Draw(frame, frame.Bounds(), p.loopingImage.GetNextFrame(), image.Point{0, 0}, draw.Src)
-	draw.Draw(frame, frame.Bounds(), p.progressImage.GetPositionFrame(p.progress, true), image.Point{0, 0}, draw.Src)
+	draw.Draw(frame, frame.Bounds(), p.loopingImage.GetNextFrame(), image.Point{0, 0}, draw.Over)
+	draw.Draw(frame, frame.Bounds(), p.progressImage.GetPositionFrame(p.progress, true), image.Point{0, 0}, draw.Over)
 
 	return frame, nil
 }

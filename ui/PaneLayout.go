@@ -7,7 +7,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/ninjasphere/go-gestic"
+	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
+
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/logger"
 )
@@ -57,9 +58,22 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 	pane.gestures.start()
 
 	if !fakeGestures {
-		gestic.ResetDevice()
-		reader := gestic.NewReader(logger.GetLogger("Gestic"), pane.OnGesture)
-		go reader.Start()
+		g, err := gestic.Open()
+		if err != nil {
+			pane.log.Warningf("Error enabling gestures: %s\n", err)
+		} else {
+			defer g.Close()
+
+			pane.log.Infof("Succesfully connected to GestIC device")
+
+			gestures := g.DataStream()
+
+			go func() {
+				for gesture := range gestures {
+					pane.OnGesture(&gesture)
+				}
+			}()
+		}
 	}
 
 	// Check for sleep timeout
@@ -72,7 +86,7 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 		}
 	}()
 
-	if fakeGestures {
+	/*if fakeGestures {
 		go func() {
 			for {
 				time.Sleep(time.Millisecond * 5000)
@@ -92,14 +106,14 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 				pane.OnGesture(gesture)
 			}
 		}()
-	}
+	}*/
 
 	return pane, pane.wake
 }
 
 type Pane interface {
 	Render() (*image.RGBA, error)
-	Gesture(*gestic.GestureData)
+	Gesture(*gestic.GestureMessage)
 }
 
 func (l *PaneLayout) Wake() {
@@ -124,7 +138,7 @@ func (l *PaneLayout) Wake() {
 	l.wake <- true
 }
 
-func (l *PaneLayout) OnGesture(g *gestic.GestureData) {
+func (l *PaneLayout) OnGesture(g *gestic.GestureMessage) {
 
 	// Always skip the first gesture if we haven't had any for ignoreFirstGestureAfterDuration
 	skip := false
@@ -153,12 +167,12 @@ func (l *PaneLayout) OnGesture(g *gestic.GestureData) {
 	// Ignore all gestures while we're fading in or out
 	if l.fadeTween == nil {
 
-		if g.Gesture.Name() == "EastToWest" {
+		if g.Gesture.Gesture == gestic.GestureFlickEastToWest {
 			l.panBy(1)
 			l.log.Infof("East to west, panning by 1")
 		}
 
-		if g.Gesture.Name() == "WestToEast" {
+		if g.Gesture.Gesture == gestic.GestureFlickWestToEast {
 			l.panBy(-1)
 			l.log.Infof("West to east, panning by -1")
 		}

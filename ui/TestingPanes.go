@@ -8,7 +8,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/ninjasphere/go-gestic"
+	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/sphere-go-led-controller/fonts/O4b03b"
 )
 
@@ -96,7 +96,7 @@ func NewFadingShrinkingColorPane(in color.Color, d time.Duration) *ColorPane {
 	return pane
 }
 
-func (p *ColorPane) Gesture(gesture *gestic.GestureData) {
+func (p *ColorPane) Gesture(gesture *gestic.GestureMessage) {
 
 }
 
@@ -131,7 +131,7 @@ func NewTextScrollPane(text string) *TextScrollPane {
 	}
 }
 
-func (p *TextScrollPane) Gesture(gesture *gestic.GestureData) {
+func (p *TextScrollPane) Gesture(gesture *gestic.GestureMessage) {
 
 }
 
@@ -184,7 +184,7 @@ func NewPairingCodePane(text string) *PairingCodePane {
 	}
 }
 
-func (p *PairingCodePane) Gesture(gesture *gestic.GestureData) {
+func (p *PairingCodePane) Gesture(gesture *gestic.GestureMessage) {
 
 }
 

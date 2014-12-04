@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"image"
 	"math"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/ninjasphere/go-gestic"
+	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
@@ -157,11 +156,11 @@ func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 	return pane
 }
 
-func (p *MediaPane) Gesture(gesture *gestic.GestureData) {
+func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 	p.gestureSync.Lock()
 	defer p.gestureSync.Unlock()
 
-	if gesture.AirWheel.AirWheelVal > 0 {
+	if gesture.AirWheel.Active {
 
 		p.volumeMode = true
 		p.volumeModeReset.Reset(volumeModeReset)
@@ -175,7 +174,7 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureData) {
 		//p.log.Debugf("Airwheel: %d", gesture.AirWheel.AirWheelVal)
 
 		if p.lastAirWheel != nil {
-			offset := int(gesture.AirWheel.AirWheelVal) - int(*p.lastAirWheel)
+			offset := int(gesture.AirWheel.Counter) - int(*p.lastAirWheel)
 
 			if offset > 30 {
 				offset -= 255
@@ -211,12 +210,12 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureData) {
 			}
 		}
 
-		val := gesture.AirWheel.AirWheelVal
+		val := uint8(gesture.AirWheel.Counter)
 		p.lastAirWheel = &val
 		//spew.Dump("last2", p.lastAirWheel)
 	}
 
-	if !p.ignoringTap && strings.Contains(gesture.Touch.Name(), "Tap") {
+	if !p.ignoringTap && gesture.Tap.Active() {
 		p.log.Infof("Tap!")
 
 		p.ignoringTap = true

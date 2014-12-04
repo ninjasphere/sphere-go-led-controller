@@ -1,6 +1,6 @@
 {
   "name": "sphere-go-led-controller",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "description": "Ninja Sphere - LED Controller",
   "main": "sphere-go-led-controller",
   "author": "Elliot Shepherd <elliot@ninjablocks.com",
