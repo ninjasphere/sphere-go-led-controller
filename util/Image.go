@@ -223,6 +223,8 @@ func LoadGif(src string) *AnimatedImage {
 	loops := img.LoopCount
 	if loops == 0 {
 		loops = -1
+	} else if loops == -1 {
+		loops = 0
 	}
 
 	return &AnimatedImage{
