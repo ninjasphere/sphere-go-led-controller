@@ -4,11 +4,10 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	"strings"
 	"time"
 
 	"github.com/lucasb-eyer/go-colorful"
-	"github.com/ninjasphere/go-gestic"
+	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-ninja/devices"
@@ -73,7 +72,7 @@ func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool)
 	return pane
 }
 
-func (p *LightPane) Gesture(gesture *gestic.GestureData) {
+func (p *LightPane) Gesture(gesture *gestic.GestureMessage) {
 
 	col := p.colorState + colorRotateSpeed
 	if col >= 1 {
@@ -90,7 +89,7 @@ func (p *LightPane) Gesture(gesture *gestic.GestureData) {
 		//p.log.Infof("Ignoring Color wheel... Remaining time: %d\n", remaining)
 	}
 
-	if strings.Contains(gesture.Touch.Name(), "Tap") {
+	if gesture.Tap.Active() {
 		if onOffRate.try() {
 			p.log.Infof("Tap!")
 

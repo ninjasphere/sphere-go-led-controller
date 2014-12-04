@@ -2,10 +2,9 @@ package ui
 
 import (
 	"image"
-	"strings"
 	"time"
 
-	"github.com/ninjasphere/go-gestic"
+	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
@@ -51,12 +50,12 @@ func NewOnOffPane(offImage string, onImage string, onStateChange func(bool), con
 	return pane
 }
 
-func (p *OnOffPane) Gesture(gesture *gestic.GestureData) {
+func (p *OnOffPane) Gesture(gesture *gestic.GestureMessage) {
 	if p.ignoringGestures {
 		return
 	}
 
-	if strings.Contains(gesture.Touch.Name(), "Tap") {
+	if gesture.Tap.Active() {
 		p.log.Infof("Tap!")
 
 		p.ignoringGestures = true
