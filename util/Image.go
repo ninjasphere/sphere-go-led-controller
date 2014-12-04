@@ -54,7 +54,7 @@ func (i *MaskImage) GetNextFrame() *image.RGBA {
 	in := i.Image.GetNextFrame()
 	out := image.NewRGBA(image.Rect(0, 0, 16, 16))
 
-	for pos := 0; (pos + 4) < len(in.Pix); pos = pos + 4 {
+	for pos := 0; (pos + 3) < len(in.Pix); pos = pos + 4 {
 		out.Pix[pos+3] = 255 - in.Pix[pos]
 	}
 
