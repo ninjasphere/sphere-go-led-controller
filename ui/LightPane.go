@@ -60,7 +60,7 @@ func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool)
 		}
 	})
 
-	getChannelServicesContinuous("light", "core.batching", func(devices []*ninja.ServiceClient, err error) {
+	getChannelServicesContinuous("light", "core/batching", func(devices []*ninja.ServiceClient, err error) {
 		if err != nil {
 			log.Infof("Failed to update batching devices: %s", err)
 		} else {
