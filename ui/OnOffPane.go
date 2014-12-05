@@ -38,7 +38,7 @@ func NewOnOffPane(offImage string, onImage string, onStateChange func(bool), con
 		conn:          conn,
 	}
 
-	getChannelServicesContinuous(thingType, "on-off", func(devices []*ninja.ServiceClient, err error) {
+	getChannelServicesContinuous(thingType, "on-off", nil, func(devices []*ninja.ServiceClient, err error) {
 		if err != nil {
 			log.Infof("Failed to update devices: %s", err)
 		} else {

@@ -93,7 +93,7 @@ func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 		}
 	}
 
-	getChannelServicesContinuous("mediaplayer", "media-control", func(devices []*ninja.ServiceClient, err error) {
+	getChannelServicesContinuous("mediaplayer", "media-control", nil, func(devices []*ninja.ServiceClient, err error) {
 
 		if err != nil {
 			log.Infof("Failed to update control devices: %s", err)
@@ -116,7 +116,7 @@ func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 
 	})
 
-	getChannelServicesContinuous("mediaplayer", "volume", func(devices []*ninja.ServiceClient, err error) {
+	getChannelServicesContinuous("mediaplayer", "volume", nil, func(devices []*ninja.ServiceClient, err error) {
 		if err != nil {
 			log.Infof("Failed to update volume devices: %s", err)
 		} else {
