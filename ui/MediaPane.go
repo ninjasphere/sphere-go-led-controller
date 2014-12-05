@@ -160,7 +160,7 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 	p.gestureSync.Lock()
 	defer p.gestureSync.Unlock()
 
-	if p.lastAirWheel == nil && gesture.AirWheel.Counter != int(*p.lastAirWheel) {
+	if p.lastAirWheel == nil || gesture.AirWheel.Counter != int(*p.lastAirWheel) {
 
 		p.volumeMode = true
 		p.volumeModeReset.Reset(volumeModeReset)
