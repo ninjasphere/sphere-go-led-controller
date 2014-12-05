@@ -4,7 +4,6 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	"strings"
 	"time"
 
 	"github.com/lucasb-eyer/go-colorful"
@@ -13,7 +12,6 @@ import (
 	"github.com/ninjasphere/go-ninja/channels"
 	"github.com/ninjasphere/go-ninja/devices"
 	"github.com/ninjasphere/go-ninja/logger"
-	"github.com/ninjasphere/go-ninja/model"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
@@ -39,7 +37,7 @@ type LightPane struct {
 	offImage util.Image
 }
 
-func NewLightPane(demoAccentMode bool, offImage string, onImage string, onOnOffStateChange func(bool), onColorStateChange func(float64), conn *ninja.Connection) *LightPane {
+func NewLightPane(offImage string, onImage string, onOnOffStateChange func(bool), onColorStateChange func(float64), conn *ninja.Connection) *LightPane {
 
 	log := logger.GetLogger("LightPane")
 	pane := &LightPane{
@@ -53,29 +51,29 @@ func NewLightPane(demoAccentMode bool, offImage string, onImage string, onOnOffS
 		conn:               conn,
 	}
 
-	getChannelServicesContinuous("light", "on-off", func(thing *model.Thing) bool {
-
-		isAccent := strings.Contains(strings.ToLower(thing.Name), "accent")
-
-		return isAccent == demoAccentMode
-
-	}, func(devices []*ninja.ServiceClient, err error) {
-		if err != nil {
-			log.Infof("Failed to update on-off devices: %s", err)
-		} else {
-			log.Infof("Pane got %d on/off devices", len(devices))
-			pane.onOffDevices = devices
-		}
-	})
-
-	if demoAccentMode {
-		getChannelServicesContinuous("light", "core/batching", func(thing *model.Thing) bool {
+	getChannelServicesContinuous("light", "on-off", /*func(thing *model.Thing) bool {
 
 			isAccent := strings.Contains(strings.ToLower(thing.Name), "accent")
 
 			return isAccent == demoAccentMode
 
-		}, func(devices []*ninja.ServiceClient, err error) {
+		}*/nil, func(devices []*ninja.ServiceClient, err error) {
+			if err != nil {
+				log.Infof("Failed to update on-off devices: %s", err)
+			} else {
+				log.Infof("Pane got %d on/off devices", len(devices))
+				pane.onOffDevices = devices
+			}
+		})
+
+	//if demoAccentMode {
+	getChannelServicesContinuous("light", "core/batching", /*func(thing *model.Thing) bool {
+
+			isAccent := strings.Contains(strings.ToLower(thing.Name), "accent")
+
+			return isAccent == demoAccentMode
+
+		}*/nil, func(devices []*ninja.ServiceClient, err error) {
 			if err != nil {
 				log.Infof("Failed to update batching devices: %s", err)
 			} else {
@@ -83,7 +81,7 @@ func NewLightPane(demoAccentMode bool, offImage string, onImage string, onOnOffS
 				pane.colorDevices = devices
 			}
 		})
-	}
+	//}
 
 	return pane
 }

@@ -260,19 +260,12 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 		layout.AddPane(heaterPane)
 	}
 
-	lightPane := ui.NewLightPane(false, util.ResolveImagePath("light-off.png"), util.ResolveImagePath("light-on.png"), func(state bool) {
+	lightPane := ui.NewLightPane(util.ResolveImagePath("light-off.png"), util.ResolveImagePath("light-on.png"), func(state bool) {
 		log.Debugf("Light on-off state: %t", state)
 	}, func(state float64) {
 		log.Debugf("Light color state: %f", state)
 	}, conn)
 	layout.AddPane(lightPane)
-
-	lightPaneAccent := ui.NewLightPane(true, util.ResolveImagePath("light-off.png"), util.ResolveImagePath("light-on.png"), func(state bool) {
-		log.Debugf("Light on-off state: %t", state)
-	}, func(state float64) {
-		log.Debugf("Light color state: %f", state)
-	}, conn)
-	layout.AddPane(lightPaneAccent)
 
 	fanPane := ui.NewOnOffPane(util.ResolveImagePath("fan-off.png"), util.ResolveImagePath("fan-on.gif"), func(state bool) {
 		log.Debugf("Fan state: %t", state)
