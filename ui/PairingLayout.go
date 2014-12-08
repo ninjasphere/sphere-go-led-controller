@@ -62,7 +62,7 @@ func NewPairingLayout() *PairingLayout {
 }
 
 func (l *PairingLayout) ShowColor(c color.Color) {
-	l.currentPane = NewPairingColorPane("./images/color-mask.gif", c)
+	l.currentPane = NewPairingColorPane(util.ResolveImagePath("color-mask.gif"), c)
 }
 
 func (l *PairingLayout) ShowFadingColor(c color.Color, d time.Duration) {
