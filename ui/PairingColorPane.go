@@ -27,8 +27,9 @@ func (p *PairingColorPane) Gesture(gesture *gestic.GestureMessage) {
 func (p *PairingColorPane) Render() (*image.RGBA, error) {
 
 	frame := image.NewRGBA(image.Rect(0, 0, width, height))
+
 	draw.Draw(frame, frame.Bounds(), &image.Uniform{p.color}, image.ZP, draw.Src)
-	draw.Draw(frame, frame.Bounds(), p.image.GetNextFrame(), image.ZP, draw.Src)
+	draw.Draw(frame, frame.Bounds(), p.image.GetNextFrame(), image.ZP, draw.Over)
 
 	return frame, nil
 }

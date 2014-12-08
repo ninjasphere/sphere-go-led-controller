@@ -54,8 +54,8 @@ func (i *MaskImage) GetNextFrame() *image.RGBA {
 	in := i.Image.GetNextFrame()
 	out := image.NewRGBA(image.Rect(0, 0, 16, 16))
 
-	for pos := 0; (pos + 4) < len(in.Pix); pos = pos + 4 {
-		out.Pix[pos+4] = in.Pix[pos]
+	for pos := 0; (pos + 3) < len(in.Pix); pos = pos + 4 {
+		out.Pix[pos+3] = 255 - in.Pix[pos]
 	}
 
 	return out
@@ -223,6 +223,8 @@ func LoadGif(src string) *AnimatedImage {
 	loops := img.LoopCount
 	if loops == 0 {
 		loops = -1
+	} else if loops == -1 {
+		loops = 0
 	}
 
 	return &AnimatedImage{

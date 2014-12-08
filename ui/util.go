@@ -37,6 +37,7 @@ var thingModel *ninja.ServiceClient
 type request struct {
 	thingType string
 	protocol  string
+	filter    func(thing *model.Thing) bool
 	cb        func([]*ninja.ServiceClient, error)
 }
 
@@ -46,7 +47,7 @@ func runTasks() {
 
 	for _, task := range tasks {
 		go func(t *request) {
-			t.cb(getChannelServices(t.thingType, t.protocol))
+			t.cb(getChannelServices(t.thingType, t.protocol, t.filter))
 		}(task)
 	}
 
@@ -78,14 +79,20 @@ func startSearchTasks(c *ninja.Connection) {
 	}()
 }
 
-func getChannelServicesContinuous(thingType string, protocol string, cb func([]*ninja.ServiceClient, error)) {
+func getChannelServicesContinuous(thingType string, protocol string, filter func(thing *model.Thing) bool, cb func([]*ninja.ServiceClient, error)) {
 
-	tasks = append(tasks, &request{thingType, protocol, cb})
+	tasks = append(tasks, &request{thingType, protocol, filter, cb})
 
-	cb(getChannelServices(thingType, protocol))
+	if filter == nil {
+		filter = func(thing *model.Thing) bool {
+			return true
+		}
+	}
+
+	cb(getChannelServices(thingType, protocol, filter))
 }
 
-func getChannelServices(thingType string, protocol string) ([]*ninja.ServiceClient, error) {
+func getChannelServices(thingType string, protocol string, filter func(thing *model.Thing) bool) ([]*ninja.ServiceClient, error) {
 
 	//time.Sleep(time.Second * 3)
 
@@ -107,7 +114,9 @@ func getChannelServices(thingType string, protocol string) ([]*ninja.ServiceClie
 		// Handle more than one channel with same protocol
 		channelTopic := getChannelTopic(&thing, protocol)
 		if channelTopic != "" {
-			services = append(services, conn.GetServiceClient(channelTopic))
+			if filter(&thing) {
+				services = append(services, conn.GetServiceClient(channelTopic))
+			}
 		}
 	}
 	return services, nil
