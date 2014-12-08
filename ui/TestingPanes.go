@@ -10,6 +10,7 @@ import (
 
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/sphere-go-led-controller/fonts/O4b03b"
+	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
 type ColorPane struct {
@@ -169,6 +170,7 @@ func (p *TextScrollPane) IsDirty() bool {
 type PairingCodePane struct {
 	text      string
 	textWidth int
+	image     util.Image
 }
 
 func NewPairingCodePane(text string) *PairingCodePane {
@@ -181,6 +183,7 @@ func NewPairingCodePane(text string) *PairingCodePane {
 	return &PairingCodePane{
 		text:      text,
 		textWidth: width,
+		image:     util.LoadImage(util.ResolveImagePath("code-underline.gif")),
 	}
 }
 
@@ -194,6 +197,8 @@ func (p *PairingCodePane) Render() (*image.RGBA, error) {
 	log.Printf("Rendering text '%s'", p.text)
 
 	start := 8 - int((float64(p.textWidth) / float64(2)))
+
+	draw.Draw(img, img.Bounds(), p.image.GetNextFrame(), image.ZP, draw.Over)
 
 	O4b03b.Font.DrawString(img, start, 4, p.text, color.White)
 
