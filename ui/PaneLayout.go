@@ -1,19 +1,15 @@
 package ui
 
 import (
-	"encoding/json"
-	"fmt"
 	"image"
 	"image/draw"
 	"log"
 	"math"
-	"os"
 	"time"
 
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 
 	"github.com/ninjasphere/go-ninja/api"
-	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
@@ -24,8 +20,6 @@ const panDuration = time.Millisecond * 350
 const wakeTransitionDuration = time.Millisecond * 200
 const sleepTimeout = time.Second * 20
 const sleepTransitionDuration = time.Second * 5
-
-var printGestures = config.Bool(false, "led.logGestures")
 
 type PaneLayout struct {
 	currentPane int
@@ -143,11 +137,6 @@ func (l *PaneLayout) OnGesture(g *gestic.GestureMessage) {
 
 	//	x, _ := json.Marshal(g)
 	//	l.log.Infof("gesture %s", x)
-
-	if logGestures {
-		x, _ := json.Marshal(g)
-		fmt.Fprint(os.Stdout, string(x)+"\n")
-	}
 
 	/*if !g.AirWheel.Active {
 		return
