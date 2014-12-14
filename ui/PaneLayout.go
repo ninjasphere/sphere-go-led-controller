@@ -25,7 +25,7 @@ const wakeTransitionDuration = time.Millisecond * 200
 const sleepTimeout = time.Second * 20
 const sleepTransitionDuration = time.Second * 5
 
-var logGestures = config.Bool(false, "led.logGestures")
+var printGestures = config.Bool(false, "led.logGestures")
 
 type PaneLayout struct {
 	currentPane int
