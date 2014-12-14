@@ -6,12 +6,9 @@ import (
 
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/go-ninja/api"
-	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
-
-var onOffTapTimeout = config.MustDuration("led.onoff.tapTimeout")
 
 type OnOffPane struct {
 	log  *logger.Logger
@@ -64,7 +61,7 @@ func (p *OnOffPane) Gesture(gesture *gestic.GestureMessage) {
 		p.ignoringGestures = true
 
 		go func() {
-			time.Sleep(onOffTapTimeout)
+			time.Sleep(time.Millisecond * 250)
 			p.ignoringGestures = false
 		}()
 
