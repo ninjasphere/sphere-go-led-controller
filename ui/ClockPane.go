@@ -28,7 +28,7 @@ func (p *ClockPane) Render() (*image.RGBA, error) {
 
 	start := 8 - int((float64(width) / float64(2)))
 
-	O4b03b.Font.DrawString(img, start, 5, text, color.White)
+	O4b03b.Font.DrawString(img, start, 6, text, color.White)
 
 	return img, nil
 }
