@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ninjasphere/go-ninja/api"
-	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/model"
 )
 
@@ -54,8 +53,6 @@ func runTasks() {
 
 }
 
-var roomID *string
-
 func startSearchTasks(c *ninja.Connection) {
 	conn = c
 	thingModel = conn.GetServiceClient("$home/services/ThingModel")
@@ -66,58 +63,12 @@ func startSearchTasks(c *ninja.Connection) {
 		return true
 	}
 
-	foundLocation := make(chan bool)
-
-	go func() {
-
-		for {
-			// Find this sphere's thing, so we know what room it's in
-			var nodes []model.Thing
-
-			err := thingModel.Call("fetchByType", []interface{}{"node"}, &nodes, time.Second*10)
-
-			gotIt := false
-
-			if err != nil {
-				log.Printf("Failed finding this sphere %s ", err)
-			} else {
-
-				for _, thing := range nodes {
-					if thing.Device != nil && thing.Device.NaturalID == config.Serial() {
-
-						if thing.Location != nil && (roomID == nil || *roomID != *thing.Location) {
-							// Got it.
-							log.Printf("Got this sphere's location: %s", thing.Location)
-							roomID = thing.Location
-							dirty = true
-							gotIt = true
-							select {
-							case foundLocation <- true:
-							default:
-							}
-						}
-					}
-				}
-
-				if gotIt {
-					time.Sleep(time.Second * 20)
-				} else {
-					log.Printf("Didn't find the sphere's location")
-					time.Sleep(time.Second * 5)
-				}
-			}
-
-		}
-	}()
-
-	<-foundLocation
-
 	thingModel.OnEvent("created", setDirty)
 	thingModel.OnEvent("updated", setDirty)
 	thingModel.OnEvent("deleted", setDirty)
 
 	go func() {
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 20)
 		for {
 			time.Sleep(time.Second * 5)
 			if dirty {
@@ -134,7 +85,7 @@ func getChannelServicesContinuous(thingType string, protocol string, filter func
 
 	if filter == nil {
 		filter = func(thing *model.Thing) bool {
-			return roomID == nil || (thing.Location != nil && *thing.Location == *roomID)
+			return true
 		}
 	}
 
@@ -214,9 +165,9 @@ func getChannelTopic(thing *model.Thing, protocol string) string {
 			if thing.Device == nil {
 				//spew.Dump("NO device on thing!", thing)
 				return ""
+			} else {
+				return "$device/" + thing.Device.ID + "/channel/" + channel.ID
 			}
-
-			return "$device/" + thing.Device.ID + "/channel/" + channel.ID
 		}
 	}
 

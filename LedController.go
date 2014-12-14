@@ -24,15 +24,12 @@ var fps Tick = Tick{
 }
 
 type LedController struct {
-	controlEnabled   bool
-	controlRequested bool
-	controlRendering bool
-
-	controlLayout *ui.PaneLayout
-	pairingLayout *ui.PairingLayout
-	conn          *ninja.Connection
-	serial        io.ReadWriteCloser
-	waiting       chan bool
+	controlEnabled bool
+	controlLayout  *ui.PaneLayout
+	pairingLayout  *ui.PairingLayout
+	conn           *ninja.Connection
+	serial         io.ReadWriteCloser
+	waiting        chan bool
 }
 
 func NewLedController(conn *ninja.Connection) (*LedController, error) {
@@ -61,7 +58,7 @@ func NewLedController(conn *ninja.Connection) (*LedController, error) {
 }
 
 func (c *LedController) start(enableControl bool) {
-	c.controlRequested = enableControl
+	c.controlEnabled = enableControl
 
 	frameWritten := make(chan bool)
 
@@ -72,7 +69,16 @@ func (c *LedController) start(enableControl bool) {
 			fps.tick()
 
 			if c.controlEnabled {
-				// Good to go
+
+				if c.controlLayout == nil {
+
+					log.Infof("Enabling layout... clearing LED")
+
+					util.WriteLEDMatrix(image.NewRGBA(image.Rect(0, 0, 16, 16)), c.serial)
+
+					c.controlLayout = getPaneLayout(c.conn)
+					log.Infof("Finished control layout")
+				}
 
 				image, wake, err := c.controlLayout.Render()
 				if err != nil {
@@ -90,6 +96,11 @@ func (c *LedController) start(enableControl bool) {
 				case <-time.After(10 * time.Second):
 					log.Infof("Timeout writing to LED matrix. Quitting.")
 					os.Exit(1)
+					// Timed out writing to the led matrix. For now. Boot!
+					//cmd := exec.Command("reboot")
+					//output, err := cmd.Output()
+
+					//log.Debugf("Output from reboot: %s err: %s", output, err)
 				}
 
 				if wake != nil {
@@ -102,23 +113,7 @@ func (c *LedController) start(enableControl bool) {
 					}
 				}
 
-			} else if c.controlRequested && !c.controlRendering {
-				// We want to display controls, so lets render the pane
-
-				c.controlRendering = true
-				go func() {
-
-					log.Infof("Starting control layout")
-					c.controlLayout = getPaneLayout(c.conn)
-					c.controlRendering = false
-					c.controlEnabled = true
-					log.Infof("Finished control layout")
-
-				}()
-			}
-
-			if c.controlRendering || !c.controlEnabled {
-				// We're either already controlling, or waiting for the pane to render
+			} else {
 
 				image, err := c.pairingLayout.Render()
 				if err != nil {
@@ -128,19 +123,17 @@ func (c *LedController) start(enableControl bool) {
 
 			}
 		}
-
 	}()
 }
 
 func (c *LedController) EnableControl() error {
-	c.controlRequested = true
+	c.controlEnabled = true
 	c.gotCommand()
 	return nil
 }
 
 func (c *LedController) DisableControl() error {
 	c.controlEnabled = false
-	c.controlRequested = false
 	c.gotCommand()
 	return nil
 }
@@ -151,6 +144,7 @@ type PairingCodeRequest struct {
 }
 
 func (c *LedController) DisplayPairingCode(req *PairingCodeRequest) error {
+	c.controlEnabled = false
 	c.pairingLayout.ShowCode(req.Code)
 	c.gotCommand()
 	return nil
@@ -168,6 +162,7 @@ func (c *LedController) DisplayColor(req *ColorRequest) error {
 		return err
 	}
 
+	c.controlEnabled = false
 	c.pairingLayout.ShowColor(col)
 	c.gotCommand()
 	return nil
@@ -179,23 +174,26 @@ type IconRequest struct {
 }
 
 func (c *LedController) DisplayIcon(req *IconRequest) error {
+	c.controlEnabled = false
 	c.pairingLayout.ShowIcon(req.Icon)
 	c.gotCommand()
 	return nil
 }
 
 func (c *LedController) DisplayDrawing() error {
+	c.controlEnabled = false
 	c.pairingLayout.ShowDrawing()
 	return nil
 }
 
 func (c *LedController) Draw(updates *[][]uint8) error {
+	c.controlEnabled = false
 	c.pairingLayout.Draw(updates)
 	return nil
 }
 
 func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
-	c.DisableControl()
+	c.controlEnabled = false
 	fade := m.Duration > 0 && !m.Hold
 	loading := false
 	var col color.Color
@@ -223,6 +221,8 @@ func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
 }
 
 func (c *LedController) DisplayUpdateProgress(p *ledmodel.DisplayUpdateProgress) error {
+	c.controlEnabled = false
+
 	c.pairingLayout.ShowUpdateProgress(p.Progress)
 
 	return nil
@@ -239,7 +239,14 @@ func (c *LedController) gotCommand() {
 func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 	layout, wake := ui.NewPaneLayout(false, conn)
 
-	mediaPane := ui.NewMediaPane(conn)
+	mediaPane := ui.NewMediaPane(&ui.MediaPaneImages{
+		Volume: util.ResolveImagePath("media-volume-speaker.gif"),
+		Mute:   util.ResolveImagePath("media-volume-mute.png"),
+		Play:   util.ResolveImagePath("media-play.png"),
+		Pause:  util.ResolveImagePath("media-pause.png"),
+		Stop:   util.ResolveImagePath("media-stop.png"),
+		Next:   util.ResolveImagePath("media-next.png"),
+	}, conn)
 	layout.AddPane(mediaPane)
 
 	if len(os.Getenv("CERTIFICATION")) > 0 {
@@ -253,11 +260,12 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 		layout.AddPane(heaterPane)
 	}
 
-	brightnessPane := ui.NewLightPane(false, util.ResolveImagePath("light-off.png"), util.ResolveImagePath("light-on.png"), conn)
-	layout.AddPane(brightnessPane)
-
-	colorPane := ui.NewLightPane(true, util.ResolveImagePath("light-off.png"), util.ResolveImagePath("light-on.png"), conn)
-	layout.AddPane(colorPane)
+	lightPane := ui.NewLightPane(util.ResolveImagePath("light-off.png"), util.ResolveImagePath("light-on.png"), func(state bool) {
+		log.Debugf("Light on-off state: %t", state)
+	}, func(state float64) {
+		log.Debugf("Light color state: %f", state)
+	}, conn)
+	layout.AddPane(lightPane)
 
 	fanPane := ui.NewOnOffPane(util.ResolveImagePath("fan-off.png"), util.ResolveImagePath("fan-on.gif"), func(state bool) {
 		log.Debugf("Fan state: %t", state)
