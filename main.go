@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/ninjasphere/go-ninja/logger"
 	"os"
 	"os/signal"
+
+	"github.com/ninjasphere/go-ninja/logger"
 
 	//"net/http"
 

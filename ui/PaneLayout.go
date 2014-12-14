@@ -16,9 +16,8 @@ import (
 const width = 16
 const height = 16
 
-const ignoreFirstGestureAfterDuration = time.Second
 const panDuration = time.Millisecond * 350
-const wakeTransitionDuration = time.Millisecond * 1
+const wakeTransitionDuration = time.Millisecond * 200
 const sleepTimeout = time.Second * 20
 const sleepTransitionDuration = time.Second * 5
 
@@ -36,7 +35,6 @@ type PaneLayout struct {
 
 	log *logger.Logger
 
-	fps      *Tick
 	gestures *Tick
 }
 
@@ -45,16 +43,12 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 	startSearchTasks(conn)
 
 	pane := &PaneLayout{
-		fps: &Tick{
-			name: "Pane FPS",
-		},
 		gestures: &Tick{
 			name: "Gestures/sec",
 		},
 		wake: make(chan bool),
 		log:  logger.GetLogger("PaneLayout"),
 	}
-	pane.fps.start()
 	pane.gestures.start()
 
 	if !fakeGestures {
@@ -70,6 +64,7 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 
 			go func() {
 				for gesture := range gestures {
+					//pane.log.Debugf("Gesture latency: %s", time.Since(gesture.Time).String())
 					pane.OnGesture(&gesture)
 				}
 			}()
@@ -140,21 +135,30 @@ func (l *PaneLayout) Wake() {
 
 func (l *PaneLayout) OnGesture(g *gestic.GestureMessage) {
 
+	//	x, _ := json.Marshal(g)
+	//	l.log.Infof("gesture %s", x)
+
+	/*if !g.AirWheel.Active {
+		return
+	}*/
+
+	//l.log.Infof("gesture : %v", g)
+
 	// Always skip the first gesture if we haven't had any for ignoreFirstGestureAfterDuration
-	skip := false
+	/*skip := false
 
 	if time.Now().Sub(l.lastGesture) > ignoreFirstGestureAfterDuration {
 		log.Printf("Ignoring first gesture")
 		skip = true
-	}
+	}*/
 
 	l.gestures.tick()
 
 	l.lastGesture = time.Now()
 
-	if skip {
-		return
-	}
+	//if skip {
+	//	return
+	//}
 
 	//spew.Dump(g)
 
@@ -177,8 +181,9 @@ func (l *PaneLayout) OnGesture(g *gestic.GestureMessage) {
 			l.log.Infof("West to east, panning by -1")
 		}
 
+		// Don't send gestures to panes while we are panning
 		if l.panTween == nil {
-			go l.panes[l.currentPane].Gesture(g)
+			l.panes[l.currentPane].Gesture(g)
 		}
 	}
 }
@@ -206,8 +211,6 @@ func (l *PaneLayout) IsDirty() bool {
 func (l *PaneLayout) Render() (*image.RGBA, chan (bool), error) {
 
 	frame := image.NewRGBA(image.Rect(0, 0, width, height))
-
-	l.fps.tick()
 
 	if l.fadeTween != nil {
 		_, done := l.fadeTween.Update()
@@ -361,7 +364,7 @@ func (t *Tick) start() {
 	go func() {
 		for {
 			time.Sleep(time.Second)
-			//log.Printf("%s - %d", t.name, t.count)
+			log.Printf("%s - %d", t.name, t.count)
 			t.count = 0
 		}
 	}()
