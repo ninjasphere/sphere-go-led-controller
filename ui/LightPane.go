@@ -27,8 +27,9 @@ var brightnessAdjustSpeed = config.MustFloat("led.light.brightnessSpeed")
 var brightnessMinimum = uint8(config.MustInt("led.light.brightnessMinimum"))
 
 type LightPane struct {
-	log  *logger.Logger
-	conn *ninja.Connection
+	log      *logger.Logger
+	conn     *ninja.Connection
+	onEnable chan bool
 
 	onOffDevices    *[]*ninja.ServiceClient
 	airwheelDevices *[]*ninja.ServiceClient
@@ -58,12 +59,11 @@ func NewLightPane(colorMode bool /*onOffDevices *[]*ninja.ServiceClient, airwhee
 	log.Infof("Light rate: %s", colorInterval.String())
 
 	pane := &LightPane{
-		colorMode: colorMode,
-		onImage:   util.LoadImage(onImage),
-		offImage:  util.LoadImage(offImage),
-		log:       log,
-		//onOffDevices:     onOffDevices,
-		//airwheelDevices:  airwheelDevices,
+		onEnable:         make(chan bool),
+		colorMode:        colorMode,
+		onImage:          util.LoadImage(onImage),
+		offImage:         util.LoadImage(offImage),
+		log:              log,
 		conn:             conn,
 		airWheelThrottle: &throttle{delay: colorInterval},
 		lastTap:          time.Now(),
@@ -97,6 +97,10 @@ func NewLightPane(colorMode bool /*onOffDevices *[]*ninja.ServiceClient, airwhee
 	//}
 
 	return pane
+}
+
+func (p *LightPane) IsEnabled() bool {
+	return (p.onOffDevices != nil && len(*p.onOffDevices) > 0) || (p.airwheelDevices != nil && len(*p.airwheelDevices) > 0)
 }
 
 func (p *LightPane) Gesture(gesture *gestic.GestureMessage) {

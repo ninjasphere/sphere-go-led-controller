@@ -96,6 +96,10 @@ func NewFadingShrinkingColorPane(in color.Color, d time.Duration) *ColorPane {
 	return pane
 }
 
+func (p *ColorPane) IsEnabled() bool {
+	return true
+}
+
 func (p *ColorPane) Gesture(gesture *gestic.GestureMessage) {
 
 }
@@ -129,6 +133,10 @@ func NewTextScrollPane(text string) *TextScrollPane {
 		position:  17,
 		start:     time.Now(),
 	}
+}
+
+func (p *TextScrollPane) IsEnabled() bool {
+	return true
 }
 
 func (p *TextScrollPane) Gesture(gesture *gestic.GestureMessage) {
@@ -184,6 +192,10 @@ func NewPairingCodePane(text string) *PairingCodePane {
 		textWidth: width,
 		image:     util.LoadImage(util.ResolveImagePath("code-underline.gif")),
 	}
+}
+
+func (p *PairingCodePane) IsEnabled() bool {
+	return true
 }
 
 func (p *PairingCodePane) Gesture(gesture *gestic.GestureMessage) {

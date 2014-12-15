@@ -6,13 +6,20 @@ import (
 	"time"
 
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
+	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/sphere-go-led-controller/fonts/O4b03b"
 )
+
+var enableClockPane = config.Bool(true, "led.clock.enabled")
 
 type ClockPane struct{}
 
 func NewClockPane() *ClockPane {
 	return &ClockPane{}
+}
+
+func (p *ClockPane) IsEnabled() bool {
+	return enableClockPane
 }
 
 func (p *ClockPane) Gesture(gesture *gestic.GestureMessage) {

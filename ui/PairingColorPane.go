@@ -21,6 +21,10 @@ func NewPairingColorPane(maskImage string, color color.Color) *PairingColorPane 
 	}
 }
 
+func (p *PairingColorPane) IsEnabled() bool {
+	return true
+}
+
 func (p *PairingColorPane) Gesture(gesture *gestic.GestureMessage) {
 }
 

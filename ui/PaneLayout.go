@@ -112,6 +112,7 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 }
 
 type Pane interface {
+	IsEnabled() bool
 	Render() (*image.RGBA, error)
 	Gesture(*gestic.GestureMessage)
 }
@@ -307,6 +308,35 @@ func (l *PaneLayout) panBy(delta int) {
 	}
 	if l.targetPane > (len(l.panes) - 1) {
 		l.targetPane = 0
+	}
+
+	// XXX: If there are no enabled panes... this will hang.
+	// But that's future Elliot's problem. Or some other poor soul
+	// who just wants to go home but some people's spheres keep
+	// exploding.
+	for {
+		enabled := l.panes[l.targetPane].IsEnabled()
+		if enabled {
+			l.log.Infof("Pane %d is enabled")
+			break
+		}
+		l.log.Infof("Skipping unenabled pane %d", l.targetPane)
+		if delta > 0 {
+			l.targetPane++
+		} else {
+			l.targetPane--
+		}
+		if l.targetPane < 0 {
+			l.targetPane = (len(l.panes) - 1)
+		}
+		if l.targetPane > (len(l.panes) - 1) {
+			l.targetPane = 0
+		}
+	}
+
+	if l.currentPane == l.targetPane {
+		l.log.Infof("Not panning. As we don't have anywhere else to pan to.")
+		return
 	}
 
 	l.log.Infof("panning from pane %d to %d", l.currentPane, l.targetPane)

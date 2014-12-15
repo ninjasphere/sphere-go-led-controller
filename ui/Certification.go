@@ -11,9 +11,12 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/go-ninja/bus"
+	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/sphere-go-led-controller/fonts/O4b03b"
 )
+
+var enableCertificationPane = config.Bool(false, "led.certification.enabled")
 
 type CertPane struct {
 	log       *logger.Logger
@@ -48,6 +51,10 @@ func NewCertPane(conn bus.Bus) *CertPane {
 	pane.StartRssi(conn)
 
 	return pane
+}
+
+func (p *CertPane) IsEnabled() bool {
+	return enableCertificationPane
 }
 
 func (p *CertPane) Gesture(gesture *gestic.GestureMessage) {
