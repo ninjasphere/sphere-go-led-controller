@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
-	"log"
 	"math"
 	"os"
 	"time"
@@ -232,7 +231,7 @@ func (l *PaneLayout) Render() (*image.RGBA, chan (bool), error) {
 	}
 
 	if !l.awake && l.fadeTween == nil {
-		log.Println("Sending blank frame and wake chan")
+		l.log.Infof("Sending blank frame and wake chan")
 		return frame, l.wake, nil
 	}
 
@@ -375,7 +374,7 @@ func (t *Tick) start() {
 	go func() {
 		for {
 			time.Sleep(time.Second)
-			log.Printf("%s - %d", t.name, t.count)
+			log.Infof("%s - %d", t.name, t.count)
 			t.count = 0
 		}
 	}()

@@ -5,7 +5,6 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
-	"log"
 	"time"
 
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
@@ -122,7 +121,7 @@ func NewTextScrollPane(text string) *TextScrollPane {
 	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
 
 	width := O4b03b.Font.DrawString(img, 0, 0, text, color.Black)
-	log.Printf("Text '%s' width: %d", text, width)
+	//log.Infof("Text '%s' width: %d", text, width)
 
 	return &TextScrollPane{
 		text:      text,
@@ -144,7 +143,7 @@ func (p *TextScrollPane) Render() (*image.RGBA, error) {
 		p.position = 17
 	}
 
-	log.Printf("Rendering text '%s' at position %d", p.text, p.position)
+	//log.Printf("Rendering text '%s' at position %d", p.text, p.position)
 
 	O4b03b.Font.DrawString(img, p.position, 0, p.text, color.White)
 
@@ -178,7 +177,7 @@ func NewPairingCodePane(text string) *PairingCodePane {
 	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
 
 	width := O4b03b.Font.DrawString(img, 0, 0, text, color.Black)
-	log.Printf("Text '%s' width: %d", text, width)
+	//log.Printf("Text '%s' width: %d", text, width)
 
 	return &PairingCodePane{
 		text:      text,
@@ -194,7 +193,7 @@ func (p *PairingCodePane) Gesture(gesture *gestic.GestureMessage) {
 func (p *PairingCodePane) Render() (*image.RGBA, error) {
 	img := image.NewRGBA(image.Rect(0, 0, 16, 16))
 
-	log.Printf("Rendering text '%s'", p.text)
+	//log.Printf("Rendering text '%s'", p.text)
 
 	start := 8 - int((float64(p.textWidth) / float64(2)))
 

@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"encoding/json"
 	"image"
 	"image/color"
 	"image/draw"
@@ -136,8 +135,8 @@ func (p *LightPane) Gesture(gesture *gestic.GestureMessage) {
 
 	if gesture.AirWheel.Counter > 0 && (p.lastAirWheel == nil || gesture.AirWheel.Counter != int(*p.lastAirWheel)) {
 
-		x, _ := json.Marshal(gesture)
-		p.log.Infof("wheel %s", x)
+		/*x, _ := json.Marshal(gesture)
+		p.log.Infof("wheel %s", x)*/
 
 		if time.Since(p.lastAirWheelTime) > time.Millisecond*300 {
 			p.lastAirWheel = nil
