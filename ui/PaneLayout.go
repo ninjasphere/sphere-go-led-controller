@@ -71,7 +71,7 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 			go func() {
 				for gesture := range gestures {
 					//pane.log.Debugf("Gesture latency: %s", time.Since(gesture.Time).String())
-					pane.OnGesture(&gesture)
+					go pane.OnGesture(&gesture)
 				}
 			}()
 		}

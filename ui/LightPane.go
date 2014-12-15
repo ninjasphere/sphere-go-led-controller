@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"image/draw"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/lucasb-eyer/go-colorful"
@@ -19,7 +20,7 @@ import (
 )
 
 var lightTapInterval = config.MustDuration("led.light.tapInterval")
-var colorInterval = config.MustDuration("led.light.tapInterval")
+var colorInterval = config.MustDuration("led.light.colorInterval")
 
 var colorAdjustSpeed = config.MustFloat("led.light.colorSpeed")
 var brightnessAdjustSpeed = config.MustFloat("led.light.brightnessSpeed")
@@ -47,11 +48,16 @@ type LightPane struct {
 
 	onImage  util.Image
 	offImage util.Image
+
+	gestureSync *sync.Mutex
 }
 
 func NewLightPane(colorMode bool /*onOffDevices *[]*ninja.ServiceClient, airwheelDevices *[]*ninja.ServiceClient,*/, offImage string, onImage string, conn *ninja.Connection) *LightPane {
 
 	log := logger.GetLogger("LightPane")
+
+	log.Infof("Light rate: %s", colorInterval.String())
+
 	pane := &LightPane{
 		colorMode: colorMode,
 		onImage:   util.LoadImage(onImage),
@@ -62,6 +68,7 @@ func NewLightPane(colorMode bool /*onOffDevices *[]*ninja.ServiceClient, airwhee
 		conn:             conn,
 		airWheelThrottle: &throttle{delay: colorInterval},
 		lastTap:          time.Now(),
+		gestureSync:      &sync.Mutex{},
 	}
 
 	getChannelServicesContinuous("light", "on-off", /*func(thing *model.Thing) bool {
@@ -94,6 +101,20 @@ func NewLightPane(colorMode bool /*onOffDevices *[]*ninja.ServiceClient, airwhee
 }
 
 func (p *LightPane) Gesture(gesture *gestic.GestureMessage) {
+
+	p.gestureSync.Lock()
+	defer p.gestureSync.Unlock()
+
+	if gesture.Tap.Active() && time.Since(p.lastTap) > lightTapInterval {
+		p.lastTap = time.Now()
+
+		p.SetOnOffState(!p.onOffState)
+	}
+
+	if time.Since(gesture.Time) > time.Millisecond*100 {
+		// Too old for wheeling, don't care
+		return
+	}
 
 	//	x, _ := json.Marshal(gesture)
 	//	p.log.Infof("Color gesture %s", x)
@@ -180,9 +201,9 @@ func (p *LightPane) Gesture(gesture *gestic.GestureMessage) {
 				if p.airWheelThrottle.try() {
 					p.log.Debugf("Airwheel NOT rate limited")
 					if p.colorMode {
-						go p.SendBrightnessToDevices()
-					} else {
 						go p.SendColorToDevices()
+					} else {
+						go p.SendBrightnessToDevices()
 					}
 				} else {
 					p.log.Debugf("Airwheel rate limited")
@@ -192,12 +213,6 @@ func (p *LightPane) Gesture(gesture *gestic.GestureMessage) {
 
 		val := uint8(gesture.AirWheel.Counter)
 		p.lastAirWheel = &val
-	}
-
-	if gesture.Tap.Active() && time.Since(p.lastTap) > lightTapInterval {
-		p.lastTap = time.Now()
-
-		p.SetOnOffState(!p.onOffState)
 	}
 
 }
@@ -275,8 +290,6 @@ func (p *LightPane) Render() (*image.RGBA, error) {
 		if brightness < brightnessMinimum {
 			brightness = brightnessMinimum
 		}
-
-		p.log.Infof("BRIGHTNESS %f %d", p.airWheelState, brightness)
 
 		draw.Draw(canvas, canvas.Bounds(), &image.Uniform{color.RGBA{brightness, brightness, brightness, 255}}, image.ZP, draw.Src)
 	}
