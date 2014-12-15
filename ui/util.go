@@ -31,6 +31,8 @@ type Channel struct {
 	ID       string `json:"id"`
 }*/
 
+var sameRoomOnly = config.Bool(true, "homecloud.sameRoomOnly")
+
 var conn *ninja.Connection
 var tasks []*request
 var thingModel *ninja.ServiceClient
@@ -66,51 +68,53 @@ func startSearchTasks(c *ninja.Connection) {
 		return true
 	}
 
-	foundLocation := make(chan bool)
+	if sameRoomOnly {
+		foundLocation := make(chan bool)
 
-	go func() {
+		go func() {
 
-		for {
-			// Find this sphere's thing, so we know what room it's in
-			var nodes []model.Thing
+			for {
+				// Find this sphere's thing, so we know what room it's in
+				var nodes []model.Thing
 
-			err := thingModel.Call("fetchByType", []interface{}{"node"}, &nodes, time.Second*10)
+				err := thingModel.Call("fetchByType", []interface{}{"node"}, &nodes, time.Second*10)
 
-			gotIt := false
+				gotIt := false
 
-			if err != nil {
-				log.Printf("Failed finding this sphere %s ", err)
-			} else {
+				if err != nil {
+					log.Printf("Failed finding this sphere %s ", err)
+				} else {
 
-				for _, thing := range nodes {
-					if thing.Device != nil && thing.Device.NaturalID == config.Serial() {
+					for _, thing := range nodes {
+						if thing.Device != nil && thing.Device.NaturalID == config.Serial() {
 
-						if thing.Location != nil && (roomID == nil || *roomID != *thing.Location) {
-							// Got it.
-							log.Printf("Got this sphere's location: %s", thing.Location)
-							roomID = thing.Location
-							dirty = true
-							gotIt = true
-							select {
-							case foundLocation <- true:
-							default:
+							if thing.Location != nil && (roomID == nil || *roomID != *thing.Location) {
+								// Got it.
+								log.Printf("Got this sphere's location: %s", thing.Location)
+								roomID = thing.Location
+								dirty = true
+								gotIt = true
+								select {
+								case foundLocation <- true:
+								default:
+								}
 							}
 						}
 					}
+
+					if gotIt {
+						time.Sleep(time.Second * 20)
+					} else {
+						//log.Printf("Didn't find the sphere's location")
+						time.Sleep(time.Second * 5)
+					}
 				}
 
-				if gotIt {
-					time.Sleep(time.Second * 20)
-				} else {
-					log.Printf("Didn't find the sphere's location")
-					time.Sleep(time.Second * 5)
-				}
 			}
+		}()
 
-		}
-	}()
-
-	<-foundLocation
+		<-foundLocation
+	}
 
 	thingModel.OnEvent("created", setDirty)
 	thingModel.OnEvent("updated", setDirty)
@@ -130,13 +134,13 @@ func startSearchTasks(c *ninja.Connection) {
 
 func getChannelServicesContinuous(thingType string, protocol string, filter func(thing *model.Thing) bool, cb func([]*ninja.ServiceClient, error)) {
 
-	tasks = append(tasks, &request{thingType, protocol, filter, cb})
-
 	if filter == nil {
 		filter = func(thing *model.Thing) bool {
 			return roomID == nil || (thing.Location != nil && *thing.Location == *roomID)
 		}
 	}
+
+	tasks = append(tasks, &request{thingType, protocol, filter, cb})
 
 	cb(getChannelServices(thingType, protocol, filter))
 }
@@ -153,8 +157,6 @@ func getChannelServices(thingType string, protocol string, filter func(thing *mo
 	if err != nil {
 		log.Printf("Failed calling fetchByType method %s ", err)
 	}
-
-	//spew.Dump(things)
 
 	var services []*ninja.ServiceClient
 
