@@ -242,6 +242,9 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 	gesturePane := ui.NewGesturePane()
 	layout.AddPane(gesturePane)
 
+	golPane := ui.NewGameOfLifePane()
+	layout.AddPane(golPane)
+
 	mediaPane := ui.NewMediaPane(conn)
 	layout.AddPane(mediaPane)
 
