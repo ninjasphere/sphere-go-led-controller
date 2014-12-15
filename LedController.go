@@ -271,10 +271,8 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 
 	layout.AddPane(fanPane)
 
-	if config.MustBool("led.clock.enabled") {
-		clockPane := ui.NewClockPane()
-		layout.AddPane(clockPane)
-	}
+	clockPane := ui.NewClockPane()
+	layout.AddPane(clockPane)
 
 	go func() {
 		<-wake
