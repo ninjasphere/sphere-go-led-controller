@@ -9,7 +9,7 @@ import (
 	"github.com/ninjasphere/go-ninja/config"
 )
 
-var enableGameOfLifePane = config.Bool(false, "led.gameOfLifePane.enabled")
+var enableGameOfLifePane = config.Bool(false, "led.gameOfLife.enabled")
 
 type GameOfLifePane struct {
 	life *Life

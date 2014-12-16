@@ -173,7 +173,7 @@ func (c *LedController) DisplayColor(req *ColorRequest) error {
 	return nil
 }
 
-func (c *LedController) DisplayIcon(req *model.IconRequest) error {
+func (c *LedController) DisplayIcon(req *ledmodel.IconRequest) error {
 	log.Infof("Displaying icon: %v", req)
 	c.pairingLayout.ShowIcon(req.Icon)
 	c.gotCommand()
@@ -235,28 +235,19 @@ func (c *LedController) gotCommand() {
 func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 	layout, wake := ui.NewPaneLayout(false, conn)
 
-	clockPane := ui.NewClockPane()
-	layout.AddPane(clockPane)
+	layout.AddPane(ui.NewClockPane())
+	layout.AddPane(ui.NewWeatherPane(conn))
+	layout.AddPane(ui.NewGesturePane())
+	layout.AddPane(ui.NewGameOfLifePane())
+	layout.AddPane(ui.NewMediaPane(conn))
+	layout.AddPane(ui.NewCertPane(conn.GetMqttClient()))
 
-	gesturePane := ui.NewGesturePane()
-	layout.AddPane(gesturePane)
+	//layout.AddPane(ui.NewTextScrollPane("Exit Music (For A Film)"))
 
-	golPane := ui.NewGameOfLifePane()
-	layout.AddPane(golPane)
-
-	mediaPane := ui.NewMediaPane(conn)
-	layout.AddPane(mediaPane)
-
-	if len(os.Getenv("CERTIFICATION")) > 0 {
-		layout.AddPane(ui.NewCertPane(conn.GetMqttClient()))
-	} else {
-		//layout.AddPane(ui.NewTextScrollPane("Exit Music (For A Film)"))
-
-		heaterPane := ui.NewOnOffPane(util.ResolveImagePath("heater-off.png"), util.ResolveImagePath("heater-on.gif"), func(state bool) {
-			log.Debugf("Heater state: %t", state)
-		}, conn, "heater")
-		layout.AddPane(heaterPane)
-	}
+	heaterPane := ui.NewOnOffPane(util.ResolveImagePath("heater-off.png"), util.ResolveImagePath("heater-on.gif"), func(state bool) {
+		log.Debugf("Heater state: %t", state)
+	}, conn, "heater")
+	layout.AddPane(heaterPane)
 
 	brightnessPane := ui.NewLightPane(false, util.ResolveImagePath("light-off.png"), util.ResolveImagePath("light-on.png"), conn)
 	layout.AddPane(brightnessPane)

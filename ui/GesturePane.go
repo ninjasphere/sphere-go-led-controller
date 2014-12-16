@@ -11,7 +11,7 @@ import (
 	"github.com/ninjasphere/go-ninja/config"
 )
 
-var enableGesturePane = config.Bool(false, "led.gesturePane.enabled")
+var enableGesturePane = config.Bool(false, "led.gestures.testPane")
 
 type GesturePane struct {
 	last *gestic.GestureMessage

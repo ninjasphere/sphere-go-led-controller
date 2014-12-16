@@ -24,7 +24,8 @@ const wakeTransitionDuration = time.Millisecond * 200
 const sleepTimeout = time.Second * 20
 const sleepTransitionDuration = time.Second * 5
 
-var logGestures = config.Bool(false, "led.logGestures")
+var logGestures = config.Bool(false, "led.gestures.log")
+var enableGestures = config.Bool(true, "led.gestures.enable")
 
 type PaneLayout struct {
 	currentPane int
@@ -164,6 +165,10 @@ func (l *PaneLayout) OnGesture(g *gestic.GestureMessage) {
 	}*/
 
 	l.gestures.tick()
+
+	if !enableGestures {
+		return
+	}
 
 	l.lastGesture = time.Now()
 

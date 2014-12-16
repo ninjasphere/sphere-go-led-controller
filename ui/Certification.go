@@ -33,6 +33,10 @@ func NewCertPane(conn bus.Bus) *CertPane {
 		log: log,
 	}
 
+	if !enableCertificationPane {
+		return pane
+	}
+
 	_, err := conn.Subscribe("$location/waypoints", func(topic string, payload []byte) {
 		var waypoints int
 		err := json.Unmarshal(payload, &waypoints)
