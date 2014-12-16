@@ -151,6 +151,7 @@ type PairingCodeRequest struct {
 }
 
 func (c *LedController) DisplayPairingCode(req *PairingCodeRequest) error {
+	c.DisableControl()
 	c.pairingLayout.ShowCode(req.Code)
 	c.gotCommand()
 	return nil
@@ -162,6 +163,7 @@ type ColorRequest struct {
 }
 
 func (c *LedController) DisplayColor(req *ColorRequest) error {
+	c.DisableControl()
 	col, err := colorful.Hex(req.Color)
 
 	if err != nil {
@@ -174,6 +176,7 @@ func (c *LedController) DisplayColor(req *ColorRequest) error {
 }
 
 func (c *LedController) DisplayIcon(req *ledmodel.IconRequest) error {
+	c.DisableControl()
 	log.Infof("Displaying icon: %v", req)
 	c.pairingLayout.ShowIcon(req.Icon)
 	c.gotCommand()
@@ -181,11 +184,13 @@ func (c *LedController) DisplayIcon(req *ledmodel.IconRequest) error {
 }
 
 func (c *LedController) DisplayDrawing() error {
+	c.DisableControl()
 	c.pairingLayout.ShowDrawing()
 	return nil
 }
 
 func (c *LedController) Draw(updates *[][]uint8) error {
+	c.DisableControl()
 	c.pairingLayout.Draw(updates)
 	return nil
 }
