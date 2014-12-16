@@ -173,12 +173,8 @@ func (c *LedController) DisplayColor(req *ColorRequest) error {
 	return nil
 }
 
-type IconRequest struct {
-	Icon        string `json:"icon"`
-	DisplayTime int    `json:"displayTime"`
-}
-
-func (c *LedController) DisplayIcon(req *IconRequest) error {
+func (c *LedController) DisplayIcon(req *model.IconRequest) error {
+	log.Infof("Displaying icon: %v", req)
 	c.pairingLayout.ShowIcon(req.Icon)
 	c.gotCommand()
 	return nil
