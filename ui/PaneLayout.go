@@ -46,7 +46,7 @@ type PaneLayout struct {
 
 func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan (bool)) {
 
-	startSearchTasks(conn)
+	go startSearchTasks(conn)
 
 	pane := &PaneLayout{
 		gestures: &Tick{
