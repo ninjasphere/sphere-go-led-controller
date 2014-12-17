@@ -2,12 +2,10 @@ package ui
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/ninjasphere/go-ninja/api"
-	"github.com/ninjasphere/go-ninja/config"
-	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
 )
 
@@ -32,13 +30,9 @@ type Channel struct {
 	ID       string `json:"id"`
 }*/
 
-var sameRoomOnly = config.Bool(true, "homecloud.sameRoomOnly")
-
 var conn *ninja.Connection
 var tasks []*request
 var thingModel *ninja.ServiceClient
-
-var log = logger.GetLogger("ui")
 
 type request struct {
 	thingType string
@@ -47,30 +41,9 @@ type request struct {
 	cb        func([]*ninja.ServiceClient, error)
 }
 
-var foundLocation = make(chan bool)
-
-var roomID *string
+var dirty = false
 
 func runTasks() {
-
-	// Find this sphere's location, if we care..
-	if sameRoomOnly {
-		for _, thing := range allThings {
-			if thing.Type == "node" && thing.Device != nil && thing.Device.NaturalID == config.Serial() {
-				if thing.Location != nil && (roomID == nil || *roomID != *thing.Location) {
-					// Got it.
-					log.Infof("Got this sphere's location: %s", thing.Location)
-					roomID = thing.Location
-					select {
-					case foundLocation <- true:
-					default:
-					}
-
-					break
-				}
-			}
-		}
-	}
 
 	for _, task := range tasks {
 		go func(t *request) {
@@ -80,51 +53,14 @@ func runTasks() {
 
 }
 
-var allThings []model.Thing
-
-func fetchAll() error {
-
-	var things []model.Thing
-
-	err := thingModel.Call("fetchAll", []interface{}{}, &things, time.Second*20)
-	//err = client.Call("fetch", "c7ac05e0-9999-4d93-bfe3-a0b4bb5e7e78", &thing)
-
-	if err != nil {
-		return fmt.Errorf("Failed to get things!: %s", err)
-	}
-
-	allThings = things
-	runTasks()
-
-	return nil
-}
-
 func startSearchTasks(c *ninja.Connection) {
 	conn = c
 	thingModel = conn.GetServiceClient("$home/services/ThingModel")
 
-	dirty := false
-
 	setDirty := func(params *json.RawMessage, topicKeys map[string]string) bool {
-		log.Infof("Devices added/removed/updated. Marking dirty.")
+		log.Printf("Devices added/removed/updated. Marking dirty.")
 		dirty = true
 		return true
-	}
-
-	go func() {
-		for {
-			err := fetchAll()
-			if err == nil {
-				break
-			}
-
-			log.Warningf("Failed to get fetch all things: %s", err)
-			time.Sleep(time.Second * 3)
-		}
-	}()
-
-	if sameRoomOnly {
-		<-foundLocation
 	}
 
 	thingModel.OnEvent("created", setDirty)
@@ -132,11 +68,11 @@ func startSearchTasks(c *ninja.Connection) {
 	thingModel.OnEvent("deleted", setDirty)
 
 	go func() {
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 20)
 		for {
 			time.Sleep(time.Second * 5)
 			if dirty {
-				fetchAll()
+				runTasks()
 				dirty = false
 			}
 		}
@@ -145,13 +81,13 @@ func startSearchTasks(c *ninja.Connection) {
 
 func getChannelServicesContinuous(thingType string, protocol string, filter func(thing *model.Thing) bool, cb func([]*ninja.ServiceClient, error)) {
 
+	tasks = append(tasks, &request{thingType, protocol, filter, cb})
+
 	if filter == nil {
 		filter = func(thing *model.Thing) bool {
-			return roomID == nil || (thing.Location != nil && *thing.Location == *roomID)
+			return true
 		}
 	}
-
-	tasks = append(tasks, &request{thingType, protocol, filter, cb})
 
 	cb(getChannelServices(thingType, protocol, filter))
 }
@@ -160,22 +96,63 @@ func getChannelServices(thingType string, protocol string, filter func(thing *mo
 
 	//time.Sleep(time.Second * 3)
 
+	var things []model.Thing
+
+	err := thingModel.Call("fetchByType", []interface{}{thingType}, &things, time.Second*10)
+	//err = client.Call("fetch", "c7ac05e0-9999-4d93-bfe3-a0b4bb5e7e78", &thing)
+
+	if err != nil {
+		log.Printf("Failed calling fetchByType method %s ", err)
+	}
+
+	//spew.Dump(things)
+
 	var services []*ninja.ServiceClient
 
-	for _, thing := range allThings {
-		if thing.Type == thingType {
+	for _, thing := range things {
 
-			// Handle more than one channel with same protocol
-			channelTopic := getChannelTopic(&thing, protocol)
-			if channelTopic != "" {
-				if filter(&thing) {
-					services = append(services, conn.GetServiceClient(channelTopic))
-				}
+		// Handle more than one channel with same protocol
+		channelTopic := getChannelTopic(&thing, protocol)
+		if channelTopic != "" {
+			if filter(&thing) {
+				services = append(services, conn.GetServiceClient(channelTopic))
 			}
 		}
 	}
 	return services, nil
 }
+
+/*func listenToEvents(topic string, conn *mqtt.MqttClient) {
+
+	filter, err := mqtt.NewTopicFilter(topic+"/event/+", 0)
+	if err != nil {
+		log.Fatalf("Boom, no good", err)
+	}
+
+	receipt, err := conn.StartSubscription(func(client *mqtt.MqttClient, message mqtt.Message) {
+		nameFind := nameRegex.FindAllStringSubmatch(string(message.Payload()), -1)
+		rssiFind := rssiRegex.FindAllStringSubmatch(string(message.Payload()), -1)
+
+		if nameFind == nil {
+			// Not a sticknfind
+		} else {
+			name := nameFind[0][1]
+			rssi := rssiFind[0][1]
+			spew.Dump("name", name, "rssi", rssi)
+
+			p.tag = name
+			p.rssi = rssi
+		}
+
+	}, filter)
+
+	if err != nil {
+		log.Fatalf("Boom, no good", err)
+	}
+
+	<-receipt
+
+}*/
 
 func getChannelTopic(thing *model.Thing, protocol string) string {
 
@@ -188,9 +165,9 @@ func getChannelTopic(thing *model.Thing, protocol string) string {
 			if thing.Device == nil {
 				//spew.Dump("NO device on thing!", thing)
 				return ""
+			} else {
+				return "$device/" + thing.Device.ID + "/channel/" + channel.ID
 			}
-
-			return "$device/" + thing.Device.ID + "/channel/" + channel.ID
 		}
 	}
 

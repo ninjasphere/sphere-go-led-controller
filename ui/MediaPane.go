@@ -10,16 +10,16 @@ import (
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/channels"
-	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
-var volumeModeReset = config.MustDuration("led.media.volumeModeReset")
-var mediaTapTimeout = config.MustDuration("led.media.tapInterval")
-var volumeInterval = config.MustDuration("led.media.volumeInterval")
-var airWheelReset = config.MustDuration("led.media.airWheelReset")
+// How long after the last airwheel before we hide the volume display
+const volumeModeReset = time.Second
+const ignoreTap = time.Millisecond * 300
+
+const volumeRate = 2 // Max number of volume calls per second
 
 type MediaPane struct {
 	log  *logger.Logger
@@ -60,16 +60,7 @@ type MediaPaneImages struct {
 	Next   string
 }
 
-var mediaImages = MediaPaneImages{
-	Volume: util.ResolveImagePath(config.MustString("led.media.images.volume")),
-	Mute:   util.ResolveImagePath(config.MustString("led.media.images.mute")),
-	Play:   util.ResolveImagePath(config.MustString("led.media.images.play")),
-	Pause:  util.ResolveImagePath(config.MustString("led.media.images.pause")),
-	Stop:   util.ResolveImagePath(config.MustString("led.media.images.stop")),
-	Next:   util.ResolveImagePath(config.MustString("led.media.images.next")),
-}
-
-func NewMediaPane(conn *ninja.Connection) *MediaPane {
+func NewMediaPane(images *MediaPaneImages, conn *ninja.Connection) *MediaPane {
 	log := logger.GetLogger("MediaPane")
 
 	pane := &MediaPane{
@@ -79,12 +70,12 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 		conn:           conn,
 		gestureSync:    &sync.Mutex{},
 
-		volumeImage: util.LoadImage(mediaImages.Volume),
-		muteImage:   util.LoadImage(mediaImages.Mute),
-		playImage:   util.LoadImage(mediaImages.Play),
-		pauseImage:  util.LoadImage(mediaImages.Pause),
-		stopImage:   util.LoadImage(mediaImages.Stop),
-		nextImage:   util.LoadImage(mediaImages.Next),
+		volumeImage: util.LoadImage(images.Volume),
+		muteImage:   util.LoadImage(images.Mute),
+		playImage:   util.LoadImage(images.Play),
+		pauseImage:  util.LoadImage(images.Pause),
+		stopImage:   util.LoadImage(images.Stop),
+		nextImage:   util.LoadImage(images.Next),
 
 		playingState: "stopped",
 
@@ -138,7 +129,7 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 					pane.volumeDevices[device.Topic] = device
 
 					device.OnEvent("state", func(params *json.RawMessage, values map[string]string) bool {
-						if time.Since(pane.lastVolumeTime) > time.Millisecond*500 {
+						if time.Since(pane.lastVolumeTime) > time.Millisecond*300 {
 
 							var volume channels.VolumeState
 							err := json.Unmarshal(*params, &volume)
@@ -165,23 +156,16 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 	return pane
 }
 
-func (p *MediaPane) IsEnabled() bool {
-	return len(p.volumeDevices) > 0 || len(p.controlDevices) > 0
-}
-
 func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 	p.gestureSync.Lock()
 	defer p.gestureSync.Unlock()
 
-	if gesture.AirWheel.Counter > 0 && (p.lastAirWheel == nil || gesture.AirWheel.Counter != int(*p.lastAirWheel)) {
-
-		//x, _ := json.Marshal(gesture)
-		//p.log.Infof("wheel %s", x)
+	if p.lastAirWheel == nil || gesture.AirWheel.Counter != int(*p.lastAirWheel) {
 
 		p.volumeMode = true
 		p.volumeModeReset.Reset(volumeModeReset)
 
-		if time.Since(p.lastAirWheelTime) > airWheelReset {
+		if time.Since(p.lastAirWheelTime) > time.Millisecond*300 {
 			p.lastAirWheel = nil
 		}
 
@@ -200,13 +184,13 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 				offset += 255
 			}
 
-			p.log.Debugf("Airwheel New: %d Offset: %d Last: %d", gesture.AirWheel.Counter, offset, *p.lastAirWheel)
+			//p.log.Debugf("Airwheel New: %d Offset: %d Last: %d", gesture.AirWheel.AirWheelVal, offset, *p.lastAirWheel)
 
-			p.log.Debugf("Current volume %f", p.volume)
+			//p.log.Debugf("Current volume %f", p.volume)
 
-			p.log.Debugf("Volume offset %f", float64(offset)/255.0)
+			//p.log.Debugf("Volume offset %f", float64(offset)/255.0)
 
-			var volume float64 = p.volume + (float64(offset)/255.0)*float64(2)
+			var volume float64 = p.volume + float64(offset)/255.0
 
 			volume = math.Max(volume, 0)
 			volume = math.Min(volume, 1)
@@ -216,12 +200,12 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 			p.volume = volume
 
 			if p.lastSentVolume != volume {
-				if time.Since(p.lastVolumeTime) < volumeInterval {
+				if time.Since(p.lastVolumeTime) < time.Millisecond*500 {
 					p.log.Debugf("Volume rate limited")
 				} else {
 					p.lastVolumeTime = time.Now()
 					p.log.Debugf("Volume NOT rate limited")
-					go p.SendVolume()
+					p.SendVolume()
 				}
 			}
 		}
@@ -235,7 +219,7 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 		p.log.Infof("Tap!")
 
 		p.ignoringTap = true
-		p.ignoreTapTimer.Reset(mediaTapTimeout)
+		p.ignoreTapTimer.Reset(ignoreTap)
 
 		switch p.playingState {
 		case "stopped":

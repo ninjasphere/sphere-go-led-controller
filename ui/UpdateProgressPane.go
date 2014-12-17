@@ -22,10 +22,6 @@ func NewUpdateProgressPane(progressImage string, loopingImage string) *UpdatePro
 	}
 }
 
-func (p *UpdateProgressPane) IsEnabled() bool {
-	return true
-}
-
 func (p *UpdateProgressPane) Gesture(gesture *gestic.GestureMessage) {
 }
 
