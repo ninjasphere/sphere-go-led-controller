@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"strings"
 	"time"
 
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
-	"github.com/ninjasphere/sphere-go-led-controller/fonts/O4b03b"
+	"github.com/ninjasphere/sphere-go-led-controller/fonts/clock"
 )
 
 var enableClockPane = config.Bool(true, "led.clock.enabled")
@@ -22,6 +23,7 @@ type ClockPane struct {
 	timer       *time.Timer
 	tapThrottle *throttle
 	lights      []*ninja.ServiceClient
+	tickTock    bool
 }
 
 func NewClockPane() *ClockPane {
@@ -58,6 +60,13 @@ func NewClockPane() *ClockPane {
 			}
 		})
 	}
+
+	go func() {
+		tick := time.Tick(time.Second)
+		for _ = range tick {
+			pane.tickTock = !pane.tickTock
+		}
+	}()
 
 	return pane
 }
@@ -110,14 +119,23 @@ func (p *ClockPane) Render() (*image.RGBA, error) {
 	var text string
 	if p.alarm != nil {
 		duration := p.alarm.Sub(time.Now())
-		text = fmt.Sprintf("%0d:%0d", int(duration.Minutes()), int(duration.Seconds())-(int(duration.Minutes())*60))
+		text = fmt.Sprintf("%d:%0d", int(duration.Minutes()), int(duration.Seconds())-(int(duration.Minutes())*60))
 	} else {
-		text = time.Now().Format("15:04")
+		text = time.Now().Format("3:04")
+		if text[0] == '0' { // 0 is too wide
+			text = text[1:]
+		}
+		if p.tickTock {
+			text = strings.Replace(text, ":", ";", 1)
+		}
 	}
-	width := O4b03b.Font.DrawString(img, 0, 0, text, color.Black)
-	start := 8 - int((float64(width) / float64(2)))
 
-	O4b03b.Font.DrawString(img, start, 5, text, color.White)
+	width := clock.Font.DrawString(img, 0, 0, text, color.Black)
+	start := 16 - width
+
+	//log.Infof("text width:%d start:%d text:%s", width, start, text)
+
+	clock.Font.DrawString(img, start, 5, text, color.White)
 
 	return img, nil
 }
