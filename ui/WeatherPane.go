@@ -51,6 +51,8 @@ func NewWeatherPane(conn *ninja.Connection) *WeatherPane {
 
 func (p *WeatherPane) GetWeather() {
 
+	enableWeatherPane = false
+
 	for {
 		site := &model.Site{}
 		err := p.siteModel.Call("fetch", config.MustString("siteId"), site, time.Second*5)
