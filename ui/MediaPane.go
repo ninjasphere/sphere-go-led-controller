@@ -165,6 +165,10 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 	return pane
 }
 
+func (p *MediaPane) IsEnabled() bool {
+	return len(p.volumeDevices) > 0 || len(p.controlDevices) > 0
+}
+
 func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 	p.gestureSync.Lock()
 	defer p.gestureSync.Unlock()

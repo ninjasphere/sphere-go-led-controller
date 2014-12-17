@@ -53,6 +53,10 @@ func NewOnOffPane(offImage string, onImage string, onStateChange func(bool), con
 	return pane
 }
 
+func (p *OnOffPane) IsEnabled() bool {
+	return len(p.devices) > 0
+}
+
 func (p *OnOffPane) Gesture(gesture *gestic.GestureMessage) {
 	if p.ignoringGestures {
 		return

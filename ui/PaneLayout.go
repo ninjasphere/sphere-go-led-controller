@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
-	"log"
 	"math"
 	"os"
 	"time"
@@ -25,7 +24,8 @@ const wakeTransitionDuration = time.Millisecond * 200
 const sleepTimeout = time.Second * 20
 const sleepTransitionDuration = time.Second * 5
 
-var logGestures = config.Bool(false, "led.logGestures")
+var logGestures = config.Bool(false, "led.gestures.log")
+var enableGestures = config.Bool(true, "led.gestures.enable")
 
 type PaneLayout struct {
 	currentPane int
@@ -46,7 +46,7 @@ type PaneLayout struct {
 
 func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan (bool)) {
 
-	startSearchTasks(conn)
+	go startSearchTasks(conn)
 
 	pane := &PaneLayout{
 		gestures: &Tick{
@@ -71,7 +71,7 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 			go func() {
 				for gesture := range gestures {
 					//pane.log.Debugf("Gesture latency: %s", time.Since(gesture.Time).String())
-					pane.OnGesture(&gesture)
+					go pane.OnGesture(&gesture)
 				}
 			}()
 		}
@@ -113,6 +113,7 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 }
 
 type Pane interface {
+	IsEnabled() bool
 	Render() (*image.RGBA, error)
 	Gesture(*gestic.GestureMessage)
 }
@@ -164,6 +165,10 @@ func (l *PaneLayout) OnGesture(g *gestic.GestureMessage) {
 	}*/
 
 	l.gestures.tick()
+
+	if !enableGestures {
+		return
+	}
 
 	l.lastGesture = time.Now()
 
@@ -232,7 +237,7 @@ func (l *PaneLayout) Render() (*image.RGBA, chan (bool), error) {
 	}
 
 	if !l.awake && l.fadeTween == nil {
-		log.Println("Sending blank frame and wake chan")
+		l.log.Infof("Sending blank frame and wake chan")
 		return frame, l.wake, nil
 	}
 
@@ -310,6 +315,35 @@ func (l *PaneLayout) panBy(delta int) {
 		l.targetPane = 0
 	}
 
+	// XXX: If there are no enabled panes... this will hang.
+	// But that's future Elliot's problem. Or some other poor soul
+	// who just wants to go home but some people's spheres keep
+	// exploding.
+	for {
+		enabled := l.panes[l.targetPane].IsEnabled()
+		if enabled {
+			l.log.Infof("Pane %d is enabled")
+			break
+		}
+		l.log.Infof("Skipping unenabled pane %d", l.targetPane)
+		if delta > 0 {
+			l.targetPane++
+		} else {
+			l.targetPane--
+		}
+		if l.targetPane < 0 {
+			l.targetPane = (len(l.panes) - 1)
+		}
+		if l.targetPane > (len(l.panes) - 1) {
+			l.targetPane = 0
+		}
+	}
+
+	if l.currentPane == l.targetPane {
+		l.log.Infof("Not panning. As we don't have anywhere else to pan to.")
+		return
+	}
+
 	l.log.Infof("panning from pane %d to %d", l.currentPane, l.targetPane)
 
 	l.panTween = &Tween{
@@ -375,7 +409,7 @@ func (t *Tick) start() {
 	go func() {
 		for {
 			time.Sleep(time.Second)
-			log.Printf("%s - %d", t.name, t.count)
+			log.Infof("%s - %d", t.name, t.count)
 			t.count = 0
 		}
 	}()

@@ -151,6 +151,7 @@ type PairingCodeRequest struct {
 }
 
 func (c *LedController) DisplayPairingCode(req *PairingCodeRequest) error {
+	c.DisableControl()
 	c.pairingLayout.ShowCode(req.Code)
 	c.gotCommand()
 	return nil
@@ -162,6 +163,7 @@ type ColorRequest struct {
 }
 
 func (c *LedController) DisplayColor(req *ColorRequest) error {
+	c.DisableControl()
 	col, err := colorful.Hex(req.Color)
 
 	if err != nil {
@@ -173,23 +175,22 @@ func (c *LedController) DisplayColor(req *ColorRequest) error {
 	return nil
 }
 
-type IconRequest struct {
-	Icon        string `json:"icon"`
-	DisplayTime int    `json:"displayTime"`
-}
-
-func (c *LedController) DisplayIcon(req *IconRequest) error {
+func (c *LedController) DisplayIcon(req *ledmodel.IconRequest) error {
+	c.DisableControl()
+	log.Infof("Displaying icon: %v", req)
 	c.pairingLayout.ShowIcon(req.Icon)
 	c.gotCommand()
 	return nil
 }
 
 func (c *LedController) DisplayDrawing() error {
+	c.DisableControl()
 	c.pairingLayout.ShowDrawing()
 	return nil
 }
 
 func (c *LedController) Draw(updates *[][]uint8) error {
+	c.DisableControl()
 	c.pairingLayout.Draw(updates)
 	return nil
 }
@@ -239,19 +240,19 @@ func (c *LedController) gotCommand() {
 func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 	layout, wake := ui.NewPaneLayout(false, conn)
 
-	mediaPane := ui.NewMediaPane(conn)
-	layout.AddPane(mediaPane)
+	layout.AddPane(ui.NewClockPane())
+	layout.AddPane(ui.NewWeatherPane(conn))
+	layout.AddPane(ui.NewGesturePane())
+	layout.AddPane(ui.NewGameOfLifePane())
+	layout.AddPane(ui.NewMediaPane(conn))
+	layout.AddPane(ui.NewCertPane(conn.GetMqttClient()))
 
-	if len(os.Getenv("CERTIFICATION")) > 0 {
-		layout.AddPane(ui.NewCertPane(conn.GetMqttClient()))
-	} else {
-		//layout.AddPane(ui.NewTextScrollPane("Exit Music (For A Film)"))
+	//layout.AddPane(ui.NewTextScrollPane("Exit Music (For A Film)"))
 
-		heaterPane := ui.NewOnOffPane(util.ResolveImagePath("heater-off.png"), util.ResolveImagePath("heater-on.gif"), func(state bool) {
-			log.Debugf("Heater state: %t", state)
-		}, conn, "heater")
-		layout.AddPane(heaterPane)
-	}
+	heaterPane := ui.NewOnOffPane(util.ResolveImagePath("heater-off.png"), util.ResolveImagePath("heater-on.gif"), func(state bool) {
+		log.Debugf("Heater state: %t", state)
+	}, conn, "heater")
+	layout.AddPane(heaterPane)
 
 	brightnessPane := ui.NewLightPane(false, util.ResolveImagePath("light-off.png"), util.ResolveImagePath("light-on.png"), conn)
 	layout.AddPane(brightnessPane)
@@ -264,11 +265,6 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 	}, conn, "fan")
 
 	layout.AddPane(fanPane)
-
-	if config.MustBool("led.clock.enabled") {
-		clockPane := ui.NewClockPane()
-		layout.AddPane(clockPane)
-	}
 
 	go func() {
 		<-wake
