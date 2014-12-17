@@ -17,10 +17,6 @@ func NewImagePane(image string) *ImagePane {
 	}
 }
 
-func (p *ImagePane) IsEnabled() bool {
-	return true
-}
-
 func (p *ImagePane) Gesture(gesture *gestic.GestureMessage) {
 }
 
