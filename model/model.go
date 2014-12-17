@@ -13,3 +13,8 @@ type ResetMode struct {
 type DisplayUpdateProgress struct {
 	Progress float64 `json:"progress"`
 }
+
+type IconRequest struct {
+	Icon        string `json:"icon"`
+	DisplayTime int    `json:"displayTime"`
+}
