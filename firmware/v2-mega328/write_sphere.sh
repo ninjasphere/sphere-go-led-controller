@@ -18,7 +18,9 @@ if test -e /sys/kernel/debug/omap_mux/gpmc_a0; then
 	echo 7 >  /sys/kernel/debug/omap_mux/mii1_col && # SCK
 	echo 7 > /sys/kernel/debug/omap_mux/mcasp0_ahclkr
 fi &&
-echo 113 > /sys/class/gpio/export &&
+if ! test -e /sys/class/gpio/gpio113/direction; then
+	echo 113 > /sys/class/gpio/export
+fi &&
 echo out > /sys/class/gpio/gpio113/direction &&
 echo 0 > /sys/class/gpio/gpio113/value &&
 ${AVR_DUDE_BIN:-/usr/bin/avrdude} \
