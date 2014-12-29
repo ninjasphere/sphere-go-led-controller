@@ -6,12 +6,12 @@ import (
 	"os"
 	"time"
 
-	owm "github.com/briandowns/openweathermap"
 	"github.com/bugsnag/bugsnag-go"
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/model"
+	owm "github.com/ninjasphere/openweathermap"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
@@ -94,7 +94,7 @@ func (p *WeatherPane) GetWeather() {
 }
 
 func (p *WeatherPane) IsEnabled() bool {
-	return enableWeatherPane && p.weather.Units != ""
+	return enableWeatherPane && p.weather.Unit != ""
 }
 
 func (p *WeatherPane) Gesture(gesture *gestic.GestureMessage) {

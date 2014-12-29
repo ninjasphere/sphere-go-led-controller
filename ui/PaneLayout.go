@@ -19,10 +19,11 @@ import (
 const width = 16
 const height = 16
 
-const panDuration = time.Millisecond * 350
-const wakeTransitionDuration = time.Millisecond * 200
-const sleepTimeout = time.Second * 20
-const sleepTransitionDuration = time.Second * 5
+var panDuration = config.MustDuration("led.panDuration")
+var wakeTransitionDuration = config.MustDuration("led.wakeTransition")
+var sleepTransitionDuration = config.MustDuration("led.sleepTransition")
+var sleepTimeout = config.MustDuration("led.sleepTimeout")
+var forceAllPanes = config.Bool(false, "led.forceAllPanes")
 
 var logGestures = config.Bool(false, "led.gestures.log")
 var enableGestures = config.Bool(true, "led.gestures.enable")
@@ -59,6 +60,7 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 
 	if !fakeGestures {
 		g, err := gestic.Open()
+
 		if err != nil {
 			pane.log.Warningf("Error enabling gestures: %s\n", err)
 		} else {
@@ -322,7 +324,11 @@ func (l *PaneLayout) panBy(delta int) {
 	for {
 		enabled := l.panes[l.targetPane].IsEnabled()
 		if enabled {
-			l.log.Infof("Pane %d is enabled")
+			l.log.Infof("Pane %d is enabled", l.targetPane)
+			break
+		}
+		if forceAllPanes {
+			l.log.Infof("Forcing pane %d to display", l.targetPane)
 			break
 		}
 		l.log.Infof("Skipping unenabled pane %d", l.targetPane)
