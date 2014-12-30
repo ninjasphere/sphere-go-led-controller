@@ -38,7 +38,7 @@ func NewWeatherPane(conn *ninja.Connection) *WeatherPane {
 	}
 
 	var err error
-	pane.weather, err = owm.NewCurrent("metric")
+	pane.weather, err = owm.NewCurrent("C")
 	if err != nil {
 		log.Warningf("Failed to load weather api:", err)
 		enableWeatherPane = false
