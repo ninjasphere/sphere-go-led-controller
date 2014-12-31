@@ -121,7 +121,14 @@ func (p *ClockPane) Render() (*image.RGBA, error) {
 		duration := p.alarm.Sub(time.Now())
 		text = fmt.Sprintf("%d:%0d", int(duration.Minutes()), int(duration.Seconds())-(int(duration.Minutes())*60))
 	} else {
-		text = time.Now().Format("3:04")
+
+		t := time.Now()
+
+		if globalSite != nil && globalSite.TimeZoneOffset != nil {
+			t = t.In(time.FixedZone("here", *globalSite.TimeZoneOffset))
+		}
+
+		text = t.Format("3:04")
 		if text[0] == '0' { // 0 is too wide
 			text = text[1:]
 		}

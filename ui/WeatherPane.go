@@ -18,6 +18,8 @@ import (
 var enableWeatherPane = config.MustBool("led.weather.enabled")
 var weatherUpdateInterval = config.MustDuration("led.weather.updateInterval")
 
+var globalSite *model.Site
+
 type WeatherPane struct {
 	siteModel  *ninja.ServiceClient
 	site       *model.Site
@@ -59,6 +61,7 @@ func (p *WeatherPane) GetWeather() {
 
 		if err == nil && (site.Longitude != nil || site.Latitude != nil) {
 			p.site = site
+			globalSite = site
 			break
 		}
 
