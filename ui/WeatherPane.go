@@ -79,15 +79,18 @@ func (p *WeatherPane) GetWeather() {
 			},
 		)
 
-		filename := util.ResolveImagePath("weather/" + p.weather.Weather[0].Icon + ".png")
+		if len(p.weather.Weather) > 0 {
 
-		if _, err := os.Stat(filename); os.IsNotExist(err) {
-			enableWeatherPane = false
-			fmt.Printf("Couldn't load image for weather: %s", filename)
-			bugsnag.Notify(fmt.Errorf("Unknown weather icon: %s", filename), p.weather)
-		} else {
-			p.image = util.LoadImage(filename)
-			enableWeatherPane = true
+			filename := util.ResolveImagePath("weather/" + p.weather.Weather[0].Icon + ".png")
+
+			if _, err := os.Stat(filename); os.IsNotExist(err) {
+				enableWeatherPane = false
+				fmt.Printf("Couldn't load image for weather: %s", filename)
+				bugsnag.Notify(fmt.Errorf("Unknown weather icon: %s", filename), p.weather)
+			} else {
+				p.image = util.LoadImage(filename)
+				enableWeatherPane = true
+			}
 		}
 
 		time.Sleep(weatherUpdateInterval)
