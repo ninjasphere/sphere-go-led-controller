@@ -57,6 +57,10 @@ func NewLedController(conn *ninja.Connection) (*LedController, error) {
 		Schema: "/service/led-controller",
 	})
 
+	conn.MustExportService(controller, "$home/led-controller", &model.ServiceAnnouncement{
+		Schema: "/service/led-controller",
+	})
+
 	return controller, nil
 }
 
