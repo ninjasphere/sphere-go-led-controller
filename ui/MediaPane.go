@@ -107,6 +107,7 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 		if err != nil {
 			log.Infof("Failed to update control devices: %s", err)
 		} else {
+
 			for _, device := range devices {
 
 				if _, ok := pane.controlDevices[device.Topic]; !ok {
@@ -121,6 +122,10 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 					device.OnEvent("stopped", e("stopped"))
 				}
 			}
+		}
+
+		if len(pane.controlDevices) == 0 {
+			pane.volumeMode = true
 		}
 
 	})
@@ -152,10 +157,16 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 				}
 			}
 		}
+
+		if len(pane.controlDevices) == 0 {
+			pane.volumeMode = true
+		}
 	})
 
 	pane.volumeModeReset = time.AfterFunc(0, func() {
-		pane.volumeMode = false
+		if len(pane.controlDevices) > 0 {
+			pane.volumeMode = false
+		}
 	})
 
 	pane.ignoreTapTimer = time.AfterFunc(0, func() {
@@ -173,7 +184,7 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 	p.gestureSync.Lock()
 	defer p.gestureSync.Unlock()
 
-	if gesture.AirWheel.Counter > 0 && (p.lastAirWheel == nil || gesture.AirWheel.Counter != int(*p.lastAirWheel)) {
+	if len(p.volumeDevices) > 0 && gesture.AirWheel.Counter > 0 && (p.lastAirWheel == nil || gesture.AirWheel.Counter != int(*p.lastAirWheel)) {
 
 		//x, _ := json.Marshal(gesture)
 		//p.log.Infof("wheel %s", x)
