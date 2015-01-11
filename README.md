@@ -1,4 +1,4 @@
-# Ninja Sphere - Chromecast Driver
+# Ninja Sphere - LED Controller
 
 
 [![Build status](https://badge.buildkite.com/98d7e0d70ed84df9d1449426e30e09769f5b843f92456f2429.svg)](https://buildkite.com/ninja-blocks-inc/sphere-go-led-controller)
