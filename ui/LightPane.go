@@ -54,7 +54,12 @@ type LightPane struct {
 
 func NewLightPane(colorMode bool /*onOffDevices *[]*ninja.ServiceClient, airwheelDevices *[]*ninja.ServiceClient,*/, offImage string, onImage string, conn *ninja.Connection) *LightPane {
 
-	log := logger.GetLogger("LightPane")
+	name := "BrightnessPane"
+	if colorMode {
+		name = "ColorPane"
+	}
+
+	log := logger.GetLogger(name)
 
 	log.Infof("Light rate: %s", colorInterval.String())
 
@@ -70,31 +75,108 @@ func NewLightPane(colorMode bool /*onOffDevices *[]*ninja.ServiceClient, airwhee
 		gestureSync:      &sync.Mutex{},
 	}
 
-	getChannelServicesContinuous("light", "on-off", /*func(thing *model.Thing) bool {
-		isAccent := strings.Contains(strings.ToLower(thing.Name), "accent")
-		return isAccent == demoAccentMode
-		}*/nil, func(devices []*ninja.ServiceClient, err error) {
-			if err != nil {
-				log.Infof("Failed to update on-off devices: %s", err)
-			} else {
-				log.Infof("Pane got %d on/off devices", len(devices))
-				pane.onOffDevices = &devices
-			}
-		})
+	if colorMode {
+		pane.onOffState = true
+	}
+
+	listening := make(map[string]bool)
+
+	if !colorMode {
+		getChannelServicesContinuous("light", "on-off", /*func(thing *model.Thing) bool {
+			isAccent := strings.Contains(strings.ToLower(thing.Name), "accent")
+			return isAccent == demoAccentMode
+			}*/nil, func(clients []*ninja.ServiceClient, err error) {
+				if err != nil {
+					log.Infof("Failed to update on-off devices: %s", err)
+				} else {
+					log.Infof("Got %d on/off devices", len(clients))
+					pane.onOffDevices = &clients
+
+					for _, device := range clients {
+						if _, ok := listening[device.Topic]; !ok {
+							listening[device.Topic] = true
+
+							device.OnEvent("state", func(state *bool, topicKeys map[string]string) bool {
+								log.Debugf("Got on-off state: %t", *state)
+								// Ignore state updates if its within 500ms of a tap (which will update the display)
+								if time.Since(pane.lastTap) > 500*time.Millisecond {
+									pane.onOffState = *state
+								}
+
+								return true
+							})
+						}
+					}
+				}
+			})
+	}
 
 	//if demoAccentMode {
 	getChannelServicesContinuous("light", "core/batching", /*func(thing *model.Thing) bool {
 		isAccent := strings.Contains(strings.ToLower(thing.Name), "accent")
 		return isAccent == demoAccentMode
-		}*/nil, func(devices []*ninja.ServiceClient, err error) {
+		}*/nil, func(clients []*ninja.ServiceClient, err error) {
 			if err != nil {
 				log.Infof("Failed to update batching devices: %s", err)
 			} else {
-				log.Infof("Pane got %d batching devices", len(devices))
-				pane.airwheelDevices = &devices
+				log.Infof("Fot %d batching devices", len(clients))
+				pane.airwheelDevices = &clients
 			}
 		})
 	//}
+
+	if colorMode {
+		getChannelServicesContinuous("light", "color", nil, func(clients []*ninja.ServiceClient, err error) {
+			if err != nil {
+				log.Infof("Failed to update color devices: %s", err)
+			} else {
+				for _, device := range clients {
+					if _, ok := listening[device.Topic]; !ok {
+						listening[device.Topic] = true
+
+						device.OnEvent("state", func(state *channels.ColorState, topicKeys map[string]string) bool {
+							log.Debugf("Got color state: %+v", *state)
+
+							if state.Mode != "hue" {
+								log.Warningf("Can't handle color mode: %s yet.", state.Mode)
+								return true
+							}
+
+							// Ignore state updates if its within 2s of an airwheel (which will update the display)
+							if time.Since(pane.lastAirWheelTime) > time.Second {
+								pane.airWheelState = *state.Hue
+							}
+
+							return true
+						})
+					}
+				}
+			}
+		})
+	} else {
+		getChannelServicesContinuous("light", "brightness", nil, func(clients []*ninja.ServiceClient, err error) {
+			if err != nil {
+				log.Infof("Failed to update brightness devices: %s", err)
+			} else {
+				for _, device := range clients {
+					if _, ok := listening[device.Topic]; !ok {
+						listening[device.Topic] = true
+
+						device.OnEvent("state", func(state *float64, topicKeys map[string]string) bool {
+							log.Infof("Got brightness state: %f", *state)
+
+							// Ignore state updates if its within 2s of an airwheel (which will update the display)
+							if time.Since(pane.lastAirWheelTime) > time.Second {
+								pane.airWheelState = *state
+							}
+
+							return true
+						})
+					}
+				}
+			}
+		})
+	}
 
 	return pane
 }
@@ -108,7 +190,7 @@ func (p *LightPane) Gesture(gesture *gestic.GestureMessage) {
 	p.gestureSync.Lock()
 	defer p.gestureSync.Unlock()
 
-	if gesture.Tap.Active() && time.Since(p.lastTap) > lightTapInterval {
+	if !p.colorMode && gesture.Tap.Active() && time.Since(p.lastTap) > lightTapInterval {
 		p.lastTap = time.Now()
 
 		p.SetOnOffState(!p.onOffState)
@@ -255,13 +337,10 @@ func (p *LightPane) SendColorToDevices() {
 			Saturation: &sat,
 		}
 		transition := 100
-		brightness := 1.0
 
 		device.Call("setBatch", &devices.LightDeviceState{
-			OnOff:      &p.onOffState,
 			Color:      airwheelState,
 			Transition: &transition,
-			Brightness: &brightness,
 		}, nil, 0)
 
 	}
@@ -273,7 +352,6 @@ func (p *LightPane) SendBrightnessToDevices() {
 		transition := 100
 
 		device.Call("setBatch", &devices.LightDeviceState{
-			OnOff:      &p.onOffState,
 			Transition: &transition,
 			Brightness: &p.airWheelState,
 		}, nil, 0)
