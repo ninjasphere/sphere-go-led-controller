@@ -19,6 +19,7 @@ var enableWeatherPane = config.MustBool("led.weather.enabled")
 var weatherUpdateInterval = config.MustDuration("led.weather.updateInterval")
 
 var globalSite *model.Site
+var timezone *time.Location
 
 type WeatherPane struct {
 	siteModel  *ninja.ServiceClient
@@ -62,12 +63,19 @@ func (p *WeatherPane) GetWeather() {
 		if err == nil && (site.Longitude != nil || site.Latitude != nil) {
 			p.site = site
 			globalSite = site
+
+			if site.TimeZoneID != nil {
+				if timezone, err = time.LoadLocation(*site.TimeZoneID); err != nil {
+					log.Warningf("error while setting timezone (%s): %s", *site.TimeZoneID, err)
+					timezone, _ = time.LoadLocation("Local")
+				}
+			}
 			break
 		}
 
 		log.Infof("Failed to get site, or site has no location.")
 
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 2)
 	}
 
 	for {

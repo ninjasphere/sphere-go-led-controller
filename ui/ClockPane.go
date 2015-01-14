@@ -124,8 +124,8 @@ func (p *ClockPane) Render() (*image.RGBA, error) {
 
 		t := time.Now()
 
-		if globalSite != nil && globalSite.TimeZoneOffset != nil {
-			t = t.In(time.FixedZone("here", *globalSite.TimeZoneOffset))
+		if timezone != nil {
+			t = t.In(timezone)
 		}
 
 		text = t.Format("3:04")
