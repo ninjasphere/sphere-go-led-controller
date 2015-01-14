@@ -25,6 +25,8 @@ type OnOffPane struct {
 	onImage  util.Image
 	offImage util.Image
 
+	lastTap time.Time
+
 	ignoringGestures bool
 }
 
@@ -41,12 +43,30 @@ func NewOnOffPane(offImage string, onImage string, onStateChange func(bool), con
 		conn:          conn,
 	}
 
-	getChannelServicesContinuous(thingType, "on-off", nil, func(devices []*ninja.ServiceClient, err error) {
+	listening := make(map[string]bool)
+
+	getChannelServicesContinuous(thingType, "on-off", nil, func(clients []*ninja.ServiceClient, err error) {
 		if err != nil {
 			log.Infof("Failed to update devices: %s", err)
 		} else {
-			log.Infof("Pane got %d on/off devices", len(devices))
-			pane.devices = devices
+			log.Infof("Pane got %d on/off devices", len(clients))
+			pane.devices = clients
+
+			for _, device := range clients {
+				if _, ok := listening[device.Topic]; !ok {
+					listening[device.Topic] = true
+
+					device.OnEvent("state", func(state *bool, topicKeys map[string]string) bool {
+						log.Debugf("Got on-off state: %t", *state)
+
+						if time.Since(pane.lastTap) > 1*time.Second {
+							pane.state = *state
+						}
+
+						return true
+					})
+				}
+			}
 		}
 	})
 
@@ -64,6 +84,8 @@ func (p *OnOffPane) Gesture(gesture *gestic.GestureMessage) {
 
 	if gesture.Tap.Active() {
 		p.log.Infof("Tap!")
+
+		p.lastTap = time.Now()
 
 		p.ignoringGestures = true
 
