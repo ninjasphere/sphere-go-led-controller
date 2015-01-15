@@ -309,12 +309,14 @@ func (l *PaneLayout) Render() (*image.RGBA, chan (bool), error) {
 
 func (l *PaneLayout) panBy(delta int) {
 	l.currentPane = l.targetPane
-	l.targetPane += delta
-	if l.targetPane < 0 {
-		l.targetPane = (len(l.panes) - 1)
+
+	target := l.targetPane + delta
+	target += delta
+	if target < 0 {
+		target = (len(l.panes) - 1)
 	}
-	if l.targetPane > (len(l.panes) - 1) {
-		l.targetPane = 0
+	if target > (len(l.panes) - 1) {
+		target = 0
 	}
 
 	// XXX: If there are no enabled panes... this will hang.
@@ -322,35 +324,35 @@ func (l *PaneLayout) panBy(delta int) {
 	// who just wants to go home but some people's spheres keep
 	// exploding.
 	for {
-		enabled := l.panes[l.targetPane].IsEnabled()
+		enabled := l.panes[target].IsEnabled()
 		if enabled {
-			l.log.Infof("Pane %d is enabled", l.targetPane)
+			l.log.Infof("Pane %d is enabled", target)
 			break
 		}
 		if forceAllPanes {
-			l.log.Infof("Forcing pane %d to display", l.targetPane)
+			l.log.Infof("Forcing pane %d to display", target)
 			break
 		}
-		l.log.Infof("Skipping unenabled pane %d", l.targetPane)
+		l.log.Infof("Skipping unenabled pane %d", target)
 		if delta > 0 {
-			l.targetPane++
+			target++
 		} else {
-			l.targetPane--
+			target--
 		}
-		if l.targetPane < 0 {
-			l.targetPane = (len(l.panes) - 1)
+		if target < 0 {
+			target = (len(l.panes) - 1)
 		}
 		if l.targetPane > (len(l.panes) - 1) {
-			l.targetPane = 0
+			target = 0
 		}
 	}
 
-	if l.currentPane == l.targetPane {
+	if l.currentPane == target {
 		l.log.Infof("Not panning. As we don't have anywhere else to pan to.")
 		return
 	}
 
-	l.log.Infof("panning from pane %d to %d", l.currentPane, l.targetPane)
+	l.log.Infof("panning from pane %d to %d", l.currentPane, target)
 
 	l.panTween = &Tween{
 		From:     0,
@@ -364,6 +366,7 @@ func (l *PaneLayout) panBy(delta int) {
 		l.panTween.To = -width
 	}
 
+	l.targetPane = target
 }
 
 type Tween struct {
