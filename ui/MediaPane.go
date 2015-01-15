@@ -47,8 +47,8 @@ type MediaPane struct {
 
 	gestureSync *sync.Mutex
 
-	controlDevices map[string]*ninja.ServiceClient
-	volumeDevices  map[string]*ninja.ServiceClient
+	controlDevices []*ninja.ServiceClient
+	volumeDevices  []*ninja.ServiceClient
 }
 
 type MediaPaneImages struct {
@@ -73,11 +73,9 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 	log := logger.GetLogger("MediaPane")
 
 	pane := &MediaPane{
-		log:            log,
-		volumeDevices:  make(map[string]*ninja.ServiceClient),
-		controlDevices: make(map[string]*ninja.ServiceClient),
-		conn:           conn,
-		gestureSync:    &sync.Mutex{},
+		log:         log,
+		conn:        conn,
+		gestureSync: &sync.Mutex{},
 
 		volumeImage: util.LoadImage(mediaImages.Volume),
 		muteImage:   util.LoadImage(mediaImages.Mute),
@@ -102,19 +100,24 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 		}
 	}
 
+	listening := make(map[string]bool)
+
 	getChannelServicesContinuous("mediaplayer", "media-control", nil, func(devices []*ninja.ServiceClient, err error) {
 
 		if err != nil {
 			log.Infof("Failed to update control devices: %s", err)
 		} else {
 
+			pane.controlDevices = devices
+
+			log.Infof("Got %d media-control devices", len(devices))
+
 			for _, device := range devices {
+				if _, ok := listening[device.Topic]; !ok {
+					listening[device.Topic] = true
 
-				if _, ok := pane.controlDevices[device.Topic]; !ok {
 					// New Device
-					log.Infof("Got control device: %s", device.Topic)
-
-					pane.controlDevices[device.Topic] = device
+					log.Infof("Got new control device: %s", device.Topic)
 
 					device.OnEvent("playing", e("playing"))
 					device.OnEvent("buffering", e("playing"))
@@ -134,13 +137,15 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 		if err != nil {
 			log.Infof("Failed to update volume devices: %s", err)
 		} else {
+
+			log.Infof("Got %d volume devices", len(devices))
+
 			for _, device := range devices {
 
-				if _, ok := pane.volumeDevices[device.Topic]; !ok {
+				if _, ok := listening[device.Topic]; !ok {
+					listening[device.Topic] = true
 					// New device
-					log.Infof("Got volume device: %s", device.Topic)
-
-					pane.volumeDevices[device.Topic] = device
+					log.Infof("Got new volume device: %s", device.Topic)
 
 					device.OnEvent("state", func(params *json.RawMessage, values map[string]string) bool {
 						if time.Since(pane.lastVolumeTime) > time.Millisecond*500 {
