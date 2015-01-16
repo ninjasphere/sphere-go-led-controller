@@ -325,7 +325,6 @@ func (l *PaneLayout) panBy(delta int) {
 	l.currentPane = l.targetPane
 
 	target := l.targetPane + delta
-	target += delta
 	if target < 0 {
 		target = (len(l.panes) - 1)
 	}
