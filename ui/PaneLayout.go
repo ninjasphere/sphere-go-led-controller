@@ -7,6 +7,7 @@ import (
 	"image/draw"
 	"math"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
@@ -35,6 +36,7 @@ type PaneLayout struct {
 	lastGesture time.Time
 
 	panTween *Tween
+	panLock  sync.Mutex
 
 	awake     bool
 	fadeTween *Tween
@@ -308,6 +310,9 @@ func (l *PaneLayout) Render() (*image.RGBA, chan (bool), error) {
 }
 
 func (l *PaneLayout) panBy(delta int) {
+	l.panLock.Lock()
+	defer l.panLock.Unlock()
+
 	l.currentPane = l.targetPane
 
 	target := l.targetPane + delta
@@ -324,6 +329,8 @@ func (l *PaneLayout) panBy(delta int) {
 	// who just wants to go home but some people's spheres keep
 	// exploding.
 	for {
+		l.log.Infof("Checking pane %d", target)
+
 		enabled := l.panes[target].IsEnabled()
 		if enabled {
 			l.log.Infof("Pane %d is enabled", target)
