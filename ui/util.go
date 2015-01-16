@@ -113,6 +113,13 @@ func startSearchTasks(c *ninja.Connection) {
 
 	go func() {
 		for {
+			time.Sleep(time.Second * 30)
+			setDirty(nil, nil)
+		}
+	}()
+
+	go func() {
+		for {
 			err := fetchAll()
 			if err == nil {
 				break
