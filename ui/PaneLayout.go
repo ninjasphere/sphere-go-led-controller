@@ -49,6 +49,15 @@ type PaneLayout struct {
 
 func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan (bool)) {
 
+	// Wait till we're paired and have a site
+	for {
+		config.MustRefresh()
+		if config.HasString("siteId") {
+			break
+		}
+		time.Sleep(time.Second * 2)
+	}
+
 	go startSearchTasks(conn)
 
 	pane := &PaneLayout{
