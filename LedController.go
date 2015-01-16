@@ -62,24 +62,26 @@ func NewLedController(conn *ninja.Connection) (*LedController, error) {
 		Schema: "/service/led-controller",
 	})
 
-	// If we have just started, and homecloud is running... enable control!
-	go func() {
-		siteModel := conn.GetServiceClient("$home/services/SiteModel")
-		for {
+	if config.HasString("siteId") {
+		// If we have just started, and we have a site, and homecloud is running... enable control!
+		go func() {
+			siteModel := conn.GetServiceClient("$home/services/SiteModel")
+			for {
 
-			if controller.commandReceived {
-				break
+				if controller.commandReceived {
+					break
+				}
+
+				err := siteModel.Call("fetch", config.MustString("siteId"), nil, time.Second*5)
+
+				if err == nil && !controller.commandReceived {
+					controller.EnableControl()
+					break
+				}
+				time.Sleep(time.Second * 5)
 			}
-
-			err := siteModel.Call("fetch", config.MustString("siteId"), nil, time.Second*5)
-
-			if err == nil && !controller.commandReceived {
-				controller.EnableControl()
-				break
-			}
-			time.Sleep(time.Second * 5)
-		}
-	}()
+		}()
+	}
 
 	return controller, nil
 }
