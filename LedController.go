@@ -27,6 +27,7 @@ type LedController struct {
 	controlEnabled   bool
 	controlRequested bool
 	controlRendering bool
+	commandReceived  bool
 
 	controlLayout *ui.PaneLayout
 	pairingLayout *ui.PairingLayout
@@ -60,6 +61,25 @@ func NewLedController(conn *ninja.Connection) (*LedController, error) {
 	conn.MustExportService(controller, "$home/led-controller", &model.ServiceAnnouncement{
 		Schema: "/service/led-controller",
 	})
+
+	// If we have just started, and homecloud is running... enable control!
+	go func() {
+		siteModel := conn.GetServiceClient("$home/services/SiteModel")
+		for {
+
+			if controller.commandReceived {
+				break
+			}
+
+			err := siteModel.Call("fetch", config.MustString("siteId"), nil, time.Second*5)
+
+			if err == nil && !controller.commandReceived {
+				controller.EnableControl()
+				break
+			}
+			time.Sleep(time.Second * 5)
+		}
+	}()
 
 	return controller, nil
 }
@@ -107,6 +127,7 @@ func (c *LedController) start(enableControl bool) {
 				}
 
 			} else if c.controlRequested && !c.controlRendering {
+
 				// We want to display controls, so lets render the pane
 
 				c.controlRendering = true
@@ -137,12 +158,23 @@ func (c *LedController) start(enableControl bool) {
 }
 
 func (c *LedController) EnableControl() error {
-	c.controlRequested = true
-	c.gotCommand()
+	if !c.controlEnabled {
+		if c.controlLayout != nil {
+			// Pane layout has already been rendered. Just re-enable control.
+			c.controlEnabled = true
+		} else {
+			c.controlRequested = true
+		}
+		c.gotCommand()
+	}
 	return nil
 }
 
 func (c *LedController) DisableControl() error {
+	c.DisplayIcon(&ledmodel.IconRequest{
+		Icon: "loading.gif",
+	})
+
 	c.controlEnabled = false
 	c.controlRequested = false
 	c.gotCommand()
@@ -155,7 +187,6 @@ type PairingCodeRequest struct {
 }
 
 func (c *LedController) DisplayPairingCode(req *PairingCodeRequest) error {
-	c.DisableControl()
 	c.pairingLayout.ShowCode(req.Code)
 	c.gotCommand()
 	return nil
@@ -167,7 +198,6 @@ type ColorRequest struct {
 }
 
 func (c *LedController) DisplayColor(req *ColorRequest) error {
-	c.DisableControl()
 	col, err := colorful.Hex(req.Color)
 
 	if err != nil {
@@ -180,7 +210,6 @@ func (c *LedController) DisplayColor(req *ColorRequest) error {
 }
 
 func (c *LedController) DisplayIcon(req *ledmodel.IconRequest) error {
-	c.DisableControl()
 	log.Infof("Displaying icon: %v", req)
 	c.pairingLayout.ShowIcon(req.Icon)
 	c.gotCommand()
@@ -188,13 +217,11 @@ func (c *LedController) DisplayIcon(req *ledmodel.IconRequest) error {
 }
 
 func (c *LedController) DisplayDrawing() error {
-	c.DisableControl()
 	c.pairingLayout.ShowDrawing()
 	return nil
 }
 
 func (c *LedController) Draw(updates *[][]uint8) error {
-	c.DisableControl()
 	c.pairingLayout.Draw(updates)
 	return nil
 }
@@ -238,6 +265,7 @@ func (c *LedController) gotCommand() {
 	case c.waiting <- true:
 	default:
 	}
+	c.commandReceived = true
 }
 
 // Load from a config file instead...
@@ -292,7 +320,7 @@ func (t *Tick) start() {
 	go func() {
 		for {
 			time.Sleep(time.Second)
-			log.Debugf("%s - %d", t.name, t.count)
+			//log.Debugf("%s - %d", t.name, t.count)
 			t.count = 0
 		}
 	}()
