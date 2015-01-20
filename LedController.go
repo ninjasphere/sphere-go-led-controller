@@ -63,18 +63,22 @@ func NewLedController(conn *ninja.Connection) (*LedController, error) {
 	})
 
 	if config.HasString("siteId") {
+		log.Infof("Have a siteId, checking if homecloud is running")
 		// If we have just started, and we have a site, and homecloud is running... enable control!
 		go func() {
 			siteModel := conn.GetServiceClient("$home/services/SiteModel")
 			for {
 
 				if controller.commandReceived {
+					log.Infof("Command has been received, stopping search for homecloud.")
 					break
 				}
 
 				err := siteModel.Call("fetch", config.MustString("siteId"), nil, time.Second*5)
 
-				if err == nil && !controller.commandReceived {
+				if err != nil {
+					log.Infof("Fetched site to enableControl. Got err: %s", err)
+				} else if err == nil && !controller.commandReceived {
 					controller.EnableControl()
 					break
 				}
@@ -160,6 +164,7 @@ func (c *LedController) start(enableControl bool) {
 }
 
 func (c *LedController) EnableControl() error {
+	log.Infof("Enabling control. Already enabled? %t", c.controlEnabled)
 	if !c.controlEnabled {
 		if c.controlLayout != nil {
 			// Pane layout has already been rendered. Just re-enable control.
@@ -173,6 +178,8 @@ func (c *LedController) EnableControl() error {
 }
 
 func (c *LedController) DisableControl() error {
+	log.Infof("Disabling control. Currently enabled? %t", c.controlEnabled)
+
 	c.DisplayIcon(&ledmodel.IconRequest{
 		Icon: "spinner-red.gif",
 	})
