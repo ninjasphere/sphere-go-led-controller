@@ -154,7 +154,7 @@ func getChannelServicesContinuous(thingType string, protocol string, filter func
 
 	if filter == nil {
 		filter = func(thing *model.Thing) bool {
-			return roomID == nil || (thing.Location != nil && *thing.Location == *roomID)
+			return roomID != nil && (thing.Location != nil && *thing.Location == *roomID)
 		}
 	}
 
