@@ -174,7 +174,7 @@ func (c *LedController) EnableControl() error {
 
 func (c *LedController) DisableControl() error {
 	c.DisplayIcon(&ledmodel.IconRequest{
-		Icon: "loading.gif",
+		Icon: "spinner-red.gif",
 	})
 
 	c.controlEnabled = false
@@ -245,7 +245,7 @@ func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
 	}
 
 	if loading {
-		c.pairingLayout.ShowIcon("loading.gif")
+		c.pairingLayout.ShowIcon("spinner-pink.gif")
 	} else if fade {
 		c.pairingLayout.ShowFadingShrinkingColor(col, m.Duration)
 	} else {

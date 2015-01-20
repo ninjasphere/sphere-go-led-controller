@@ -23,7 +23,7 @@ func NewPairingLayout() *PairingLayout {
 		log:          logger.GetLogger("PaneLayout"),
 		progressPane: NewUpdateProgressPane(util.ResolveImagePath("update-progress.gif"), util.ResolveImagePath("update-loop.gif")),
 	}
-	layout.ShowIcon("loading.gif")
+	layout.ShowIcon("spinner-blue.gif")
 
 	/*	go func() {
 		time.Sleep(time.Second * 5)
