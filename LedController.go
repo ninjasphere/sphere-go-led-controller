@@ -281,6 +281,7 @@ func (c *LedController) gotCommand() {
 func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 	layout, wake := ui.NewPaneLayout(false, conn)
 
+	layout.AddPane(ui.NewPlasmaPane())
 	layout.AddPane(ui.NewClockPane())
 	layout.AddPane(ui.NewWeatherPane(conn))
 	layout.AddPane(ui.NewGesturePane())
