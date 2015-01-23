@@ -30,6 +30,7 @@ type MediaPane struct {
 
 	lastAirWheelTime time.Time
 	lastAirWheel     *uint8
+	countSinceLast   int
 
 	volume         float64
 	volumeImage    util.Image
@@ -129,6 +130,7 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 
 		if len(pane.controlDevices) == 0 {
 			pane.volumeMode = true
+			pane.log.Debugf("No control devices. Forcing volume mode.")
 		}
 
 	})
@@ -140,12 +142,16 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 
 			log.Infof("Got %d volume devices", len(devices))
 
+			pane.volumeDevices = devices
+
 			for _, device := range devices {
+
+				log.Debugf("Checking volume device %s", device.Topic)
 
 				if _, ok := listening[device.Topic]; !ok {
 					listening[device.Topic] = true
 					// New device
-					log.Infof("Got new volume device: %s", device.Topic)
+					pane.log.Infof("Got new volume device: %s", device.Topic)
 
 					device.OnEvent("state", func(params *json.RawMessage, values map[string]string) bool {
 						if time.Since(pane.lastVolumeTime) > time.Millisecond*500 {
@@ -165,12 +171,14 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 
 		if len(pane.controlDevices) == 0 {
 			pane.volumeMode = true
+			pane.log.Debugf("No control devices. Forcing volume mode.")
 		}
 	})
 
 	pane.volumeModeReset = time.AfterFunc(0, func() {
 		if len(pane.controlDevices) > 0 {
 			pane.volumeMode = false
+			pane.log.Debugf("Going back to volume mode")
 		}
 	})
 
@@ -189,10 +197,10 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 	p.gestureSync.Lock()
 	defer p.gestureSync.Unlock()
 
-	if len(p.volumeDevices) > 0 && gesture.AirWheel.Counter > 0 && (p.lastAirWheel == nil || gesture.AirWheel.Counter != int(*p.lastAirWheel)) {
+	//x, _ := json.Marshal(gesture)
+	//p.log.Infof("vol devices: %d last: %d counter: %d sinceLast: %d", len(p.volumeDevices), p.lastAirWheel, gesture.AirWheel.Counter, gesture.AirWheel.CountSinceLast)
 
-		//x, _ := json.Marshal(gesture)
-		//p.log.Infof("wheel %s", x)
+	if len(p.volumeDevices) > 0 && (p.lastAirWheel == nil || gesture.AirWheel.Counter != int(*p.lastAirWheel)) {
 
 		p.volumeMode = true
 		p.volumeModeReset.Reset(volumeModeReset)
@@ -201,9 +209,15 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 			p.lastAirWheel = nil
 		}
 
+		if p.countSinceLast > gesture.AirWheel.CountSinceLast {
+			p.lastAirWheel = nil
+		}
+
+		p.countSinceLast = gesture.AirWheel.CountSinceLast
+
 		p.lastAirWheelTime = time.Now()
 
-		//p.log.Debugf("Airwheel: %d", gesture.AirWheel.AirWheelVal)
+		p.log.Debugf("Airwheel: %d", gesture.AirWheel.Counter)
 
 		if p.lastAirWheel != nil {
 			offset := int(gesture.AirWheel.Counter) - int(*p.lastAirWheel)
@@ -222,7 +236,7 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 
 			p.log.Debugf("Volume offset %f", float64(offset)/255.0)
 
-			var volume float64 = p.volume + (float64(offset)/255.0)*float64(2)
+			var volume = p.volume + (float64(offset)/255.0)*float64(2)
 
 			volume = math.Max(volume, 0)
 			volume = math.Min(volume, 1)
@@ -247,7 +261,7 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 		//spew.Dump("last2", p.lastAirWheel)
 	}
 
-	if !p.ignoringTap && gesture.Tap.Active() {
+	if len(p.controlDevices) > 0 && !p.ignoringTap && gesture.Tap.Active() {
 		p.log.Infof("Tap!")
 
 		p.ignoringTap = true
@@ -262,6 +276,8 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 			p.SetControlState("playing")
 		}
 
+		p.volumeModeReset.Stop()
+		p.volumeMode = false
 	}
 
 }
