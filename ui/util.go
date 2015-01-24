@@ -154,7 +154,7 @@ func getChannelServicesContinuous(thingType string, protocol string, filter func
 
 	if filter == nil {
 		filter = func(thing *model.Thing) bool {
-			return roomID != nil && (thing.Location != nil && *thing.Location == *roomID)
+			return roomID == nil || (thing.Location != nil && *thing.Location == *roomID)
 		}
 	}
 
@@ -173,10 +173,10 @@ func getChannelServices(thingType string, protocol string, filter func(thing *mo
 		if thing.Type == thingType {
 
 			// Handle more than one channel with same protocol
-			channelTopic := getChannelTopic(&thing, protocol)
-			if channelTopic != "" {
+			channel := getChannel(&thing, protocol)
+			if channel != nil {
 				if filter(&thing) {
-					services = append(services, conn.GetServiceClient(channelTopic))
+					services = append(services, conn.GetServiceClientFromAnnouncement(channel.ServiceAnnouncement))
 				}
 			}
 		}
@@ -184,22 +184,22 @@ func getChannelServices(thingType string, protocol string, filter func(thing *mo
 	return services, nil
 }
 
-func getChannelTopic(thing *model.Thing, protocol string) string {
+func getChannel(thing *model.Thing, protocol string) *model.Channel {
 
 	if thing.Device == nil || thing.Device.Channels == nil {
-		return ""
+		return nil
 	}
 
 	for _, channel := range *thing.Device.Channels {
 		if channel.Protocol == protocol {
 			if thing.Device == nil {
 				//spew.Dump("NO device on thing!", thing)
-				return ""
+				return nil
 			}
 
-			return "$device/" + thing.Device.ID + "/channel/" + channel.ID
+			return channel
 		}
 	}
 
-	return ""
+	return nil
 }

@@ -25,18 +25,23 @@ type MediaPane struct {
 	log  *logger.Logger
 	conn *ninja.Connection
 
-	volumeMode      bool
-	volumeModeReset *time.Timer
+	volumeMode       bool
+	volumeModeReset  *time.Timer
+	volumeUpDownMode bool
+	volumeUpDown     *bool
 
 	lastAirWheelTime time.Time
 	lastAirWheel     *uint8
 	countSinceLast   int
 
-	volume         float64
-	volumeImage    util.Image
-	muteImage      util.Image
-	lastVolumeTime time.Time
-	lastSentVolume float64
+	volume            float64
+	volumeImage       util.Image
+	volumeUpImage     util.Image
+	volumeDownImage   util.Image
+	muteImage         util.Image
+	lastVolumeTime    time.Time
+	lastSentVolume    float64
+	volumeUpDownTimer *time.Timer
 
 	ignoringTap    bool
 	ignoreTapTimer *time.Timer
@@ -53,21 +58,25 @@ type MediaPane struct {
 }
 
 type MediaPaneImages struct {
-	Volume string
-	Mute   string
-	Play   string
-	Pause  string
-	Stop   string
-	Next   string
+	Volume     string
+	VolumeUp   string
+	VolumeDown string
+	Mute       string
+	Play       string
+	Pause      string
+	Stop       string
+	Next       string
 }
 
 var mediaImages = MediaPaneImages{
-	Volume: util.ResolveImagePath(config.MustString("led.media.images.volume")),
-	Mute:   util.ResolveImagePath(config.MustString("led.media.images.mute")),
-	Play:   util.ResolveImagePath(config.MustString("led.media.images.play")),
-	Pause:  util.ResolveImagePath(config.MustString("led.media.images.pause")),
-	Stop:   util.ResolveImagePath(config.MustString("led.media.images.stop")),
-	Next:   util.ResolveImagePath(config.MustString("led.media.images.next")),
+	Volume:     util.ResolveImagePath(config.MustString("led.media.images.volume")),
+	VolumeUp:   util.ResolveImagePath(config.MustString("led.media.images.volumeUp")),
+	VolumeDown: util.ResolveImagePath(config.MustString("led.media.images.volumeDown")),
+	Mute:       util.ResolveImagePath(config.MustString("led.media.images.mute")),
+	Play:       util.ResolveImagePath(config.MustString("led.media.images.play")),
+	Pause:      util.ResolveImagePath(config.MustString("led.media.images.pause")),
+	Stop:       util.ResolveImagePath(config.MustString("led.media.images.stop")),
+	Next:       util.ResolveImagePath(config.MustString("led.media.images.next")),
 }
 
 func NewMediaPane(conn *ninja.Connection) *MediaPane {
@@ -78,12 +87,14 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 		conn:        conn,
 		gestureSync: &sync.Mutex{},
 
-		volumeImage: util.LoadImage(mediaImages.Volume),
-		muteImage:   util.LoadImage(mediaImages.Mute),
-		playImage:   util.LoadImage(mediaImages.Play),
-		pauseImage:  util.LoadImage(mediaImages.Pause),
-		stopImage:   util.LoadImage(mediaImages.Stop),
-		nextImage:   util.LoadImage(mediaImages.Next),
+		volumeImage:     util.LoadImage(mediaImages.Volume),
+		volumeUpImage:   util.LoadImage(mediaImages.VolumeUp),
+		volumeDownImage: util.LoadImage(mediaImages.VolumeDown),
+		muteImage:       util.LoadImage(mediaImages.Mute),
+		playImage:       util.LoadImage(mediaImages.Play),
+		pauseImage:      util.LoadImage(mediaImages.Pause),
+		stopImage:       util.LoadImage(mediaImages.Stop),
+		nextImage:       util.LoadImage(mediaImages.Next),
 
 		playingState: "stopped",
 
@@ -143,6 +154,13 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 			log.Infof("Got %d volume devices", len(devices))
 
 			pane.volumeDevices = devices
+			pane.volumeUpDownMode = false
+			for _, device := range devices {
+				if !isValueInList("set", device.SupportedMethods) && isValueInList("volumeUp", device.SupportedMethods) {
+					pane.log.Infof("Volume up/down mode!")
+					pane.volumeUpDownMode = true
+				}
+			}
 
 			for _, device := range devices {
 
@@ -151,7 +169,7 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 				if _, ok := listening[device.Topic]; !ok {
 					listening[device.Topic] = true
 					// New device
-					pane.log.Infof("Got new volume device: %s", device.Topic)
+					pane.log.Infof("Got new volume device: %s supported: %v", device.Topic, device.SupportedMethods)
 
 					device.OnEvent("state", func(params *json.RawMessage, values map[string]string) bool {
 						if time.Since(pane.lastVolumeTime) > time.Millisecond*500 {
@@ -186,7 +204,20 @@ func NewMediaPane(conn *ninja.Connection) *MediaPane {
 		pane.ignoringTap = false
 	})
 
+	pane.volumeUpDownTimer = time.AfterFunc(0, func() {
+		pane.volumeUpDown = nil
+	})
+
 	return pane
+}
+
+func isValueInList(value string, list []string) bool {
+	for _, v := range list {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *MediaPane) IsEnabled() bool {
@@ -236,22 +267,39 @@ func (p *MediaPane) Gesture(gesture *gestic.GestureMessage) {
 
 			p.log.Debugf("Volume offset %f", float64(offset)/255.0)
 
-			var volume = p.volume + (float64(offset)/255.0)*float64(2)
+			if p.volumeUpDownMode {
 
-			volume = math.Max(volume, 0)
-			volume = math.Min(volume, 1)
-
-			p.log.Debugf("Adjusted volume %f:", volume)
-
-			p.volume = volume
-
-			if p.lastSentVolume != volume {
 				if time.Since(p.lastVolumeTime) < volumeInterval {
 					p.log.Debugf("Volume rate limited")
 				} else {
 					p.lastVolumeTime = time.Now()
 					p.log.Debugf("Volume NOT rate limited")
-					go p.SendVolume()
+					dir := offset > 0
+					p.volumeUpDown = &dir
+					p.volumeUpDownTimer.Reset(time.Millisecond * 500)
+
+					go p.SendVolumeAdjust(dir)
+				}
+
+			} else {
+
+				var volume = p.volume + (float64(offset)/255.0)*float64(2)
+
+				volume = math.Max(volume, 0)
+				volume = math.Min(volume, 1)
+
+				p.log.Debugf("Adjusted volume %f:", volume)
+
+				p.volume = volume
+
+				if p.lastSentVolume != volume {
+					if time.Since(p.lastVolumeTime) < volumeInterval {
+						p.log.Debugf("Volume rate limited")
+					} else {
+						p.lastVolumeTime = time.Now()
+						p.log.Debugf("Volume NOT rate limited")
+						go p.SendVolume()
+					}
 				}
 			}
 		}
@@ -302,6 +350,20 @@ func (p *MediaPane) SetControlState(state string) {
 	p.playingState = state
 }
 
+func (p *MediaPane) SendVolumeAdjust(direction bool) {
+	p.log.Debugf("Sending volume direction %v:", direction)
+
+	for _, device := range p.volumeDevices {
+		if direction {
+			device.Call("volumeUp", nil, nil, 0)
+		} else {
+			device.Call("volumeDown", nil, nil, 0)
+		}
+
+	}
+	//p.onStateChange(state)
+}
+
 func (p *MediaPane) SendVolume() {
 	p.log.Debugf("New volume %f:", p.volume)
 	//	p.volume = volume
@@ -316,6 +378,16 @@ func (p *MediaPane) SendVolume() {
 func (p *MediaPane) Render() (*image.RGBA, error) {
 
 	if p.volumeMode {
+		if p.volumeUpDownMode {
+			if p.volumeUpDown != nil {
+				if *p.volumeUpDown {
+					return p.volumeUpImage.GetNextFrame(), nil
+				}
+				return p.volumeDownImage.GetNextFrame(), nil
+			}
+			return p.volumeImage.GetPositionFrame(0, true), nil
+		}
+
 		if p.volume > 0 {
 			return p.volumeImage.GetPositionFrame(1-p.volume, true), nil
 		}
