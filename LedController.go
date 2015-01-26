@@ -289,6 +289,10 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 	layout.AddPane(ui.NewCertPane(conn.GetMqttClient()))
 
 	//layout.AddPane(ui.NewTextScrollPane("Exit Music (For A Film)"))
+	lampPane := ui.NewOnOffPane(util.ResolveImagePath("lamp2-off.gif"), util.ResolveImagePath("lamp2-on.gif"), func(state bool) {
+		log.Debugf("Lamp state: %t", state)
+	}, conn, "lamp")
+	layout.AddPane(lampPane)
 
 	heaterPane := ui.NewOnOffPane(util.ResolveImagePath("heater-off.png"), util.ResolveImagePath("heater-on.gif"), func(state bool) {
 		log.Debugf("Heater state: %t", state)
