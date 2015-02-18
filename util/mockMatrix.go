@@ -36,7 +36,7 @@ func (m *mockMatrix) Read(p []byte) (n int, err error) {
 		} else {
 			p[0] = 'F'
 			m.count = 0
-			m.state = stateData
+			m.state = stateCmd
 			return 1, nil
 		}
 	case stateClose:
@@ -77,13 +77,13 @@ func (m *mockMatrix) Write(p []byte) (n int, err error) {
 					// optimization for common case where the write length is less than or equal to the full 768 bytes
 					m.count += len(p)
 					if m.count == maxWrite {
-						m.state = stateSwap
+						m.state = stateCmd
 					}
 					break buffer
 				}
 				m.count++
 				if m.count == maxWrite {
-					m.state = stateSwap
+					m.state = stateCmd
 				}
 			case stateSwap:
 				switch c {
