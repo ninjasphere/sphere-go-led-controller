@@ -69,7 +69,7 @@ func (m *mockMatrix) Write(p []byte) (n int, err error) {
 					m.state = stateSwap
 				default:
 					m.state = stateClose
-					return i + 1, fmt.Errorf("unexpected command received while waiting for command: 0x%02x", c)
+					return i + 1, fmt.Errorf("unexpected command received while waiting for command: 0x%02x, %v", c, *m)
 				}
 			case stateData:
 				if i == 0 && m.count+len(p) <= maxWrite {
@@ -91,7 +91,7 @@ func (m *mockMatrix) Write(p []byte) (n int, err error) {
 					m.count = 0
 				default:
 					m.state = stateClose
-					return i + 1, fmt.Errorf("unexpected byte received while in swap state.")
+					return i + 1, fmt.Errorf("unexpected byte received while in swap state %v", *m)
 				}
 			case stateClose:
 				return 0, fmt.Errorf("stream is closed")
