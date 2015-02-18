@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"os"
 	"time"
 
@@ -12,21 +13,26 @@ import (
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/model"
 	owm "github.com/ninjasphere/openweathermap"
+	"github.com/ninjasphere/sphere-go-led-controller/fonts/O4b03b"
+	"github.com/ninjasphere/sphere-go-led-controller/fonts/clock"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
 var enableWeatherPane = config.MustBool("led.weather.enabled")
 var weatherUpdateInterval = config.MustDuration("led.weather.updateInterval")
+var temperatureDisplayTime = config.Duration(time.Second*5, "led.weather.temperatureDisplayTime")
 
 var globalSite *model.Site
 var timezone *time.Location
 
 type WeatherPane struct {
-	siteModel  *ninja.ServiceClient
-	site       *model.Site
-	getWeather *time.Timer
-	weather    *owm.CurrentWeatherData
-	image      util.Image
+	siteModel   *ninja.ServiceClient
+	site        *model.Site
+	getWeather  *time.Timer
+	tempTimeout *time.Timer
+	temperature bool
+	weather     *owm.CurrentWeatherData
+	image       util.Image
 }
 
 func NewWeatherPane(conn *ninja.Connection) *WeatherPane {
@@ -35,6 +41,10 @@ func NewWeatherPane(conn *ninja.Connection) *WeatherPane {
 		siteModel: conn.GetServiceClient("$home/services/SiteModel"),
 		image:     util.LoadImage(util.ResolveImagePath("weather/loading.gif")),
 	}
+
+	pane.tempTimeout = time.AfterFunc(0, func() {
+		pane.temperature = false
+	})
 
 	if !enableWeatherPane {
 		return pane
@@ -112,10 +122,34 @@ func (p *WeatherPane) IsEnabled() bool {
 }
 
 func (p *WeatherPane) Gesture(gesture *gestic.GestureMessage) {
+	if gesture.Tap.Active() {
+		log.Infof("Weather tap!")
+
+		p.temperature = true
+		p.tempTimeout.Reset(temperatureDisplayTime)
+	}
 }
 
 func (p *WeatherPane) Render() (*image.RGBA, error) {
-	return p.image.GetNextFrame(), nil
+	if p.temperature {
+		img := image.NewRGBA(image.Rect(0, 0, 16, 16))
+
+		var temp string
+		if p.weather.Sys.Country == "US" {
+			temp = fmt.Sprintf("%dF", int(p.weather.Main.Temp*(9/5)-459.67))
+		} else {
+			temp = fmt.Sprintf("%dC", int(p.weather.Main.Temp-273.15))
+		}
+
+		width := clock.Font.DrawString(img, 0, 0, temp, color.Black)
+		start := int((16 - width) / 2)
+
+		O4b03b.Font.DrawString(img, start, 5, temp, color.RGBA{255, 255, 255, 255})
+
+		return img, nil
+	} else {
+		return p.image.GetNextFrame(), nil
+	}
 }
 
 func (p *WeatherPane) IsDirty() bool {
