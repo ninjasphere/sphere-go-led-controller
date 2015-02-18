@@ -98,8 +98,8 @@ func GetLEDConnection() (io.ReadWriteCloser, error) {
 		}
 	}
 
-	log.Fatalf("Failed to connect to LED matrix")
-	return nil, nil
+	log.Errorf("failed to connect to LED matrix - falling back to mock a matrix connection.")
+	return newMockMatrix(), nil
 }
 
 func ConvertImage(image *image.RGBA) []byte {
