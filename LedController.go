@@ -242,7 +242,7 @@ func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
 	var col color.Color
 	switch m.Mode {
 	case "abort":
-		col, _ = colorful.Hex("#000000")
+		col, _ = colorful.Hex("#FFFFFF")
 	case "halt":
 		col, _ = colorful.Hex("#CDC9C9")
 	case "reboot":
