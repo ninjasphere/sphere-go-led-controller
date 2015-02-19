@@ -252,6 +252,9 @@ func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
 	case "reset-root":
 		col, _ = colorful.Hex("#FF0000")
 	case "none":
+		col, _ = colorful.Hex("#FFFFFF")
+		c.pairingLayout.ShowColor(col)
+		c.gotCommand()
 		c.EnableControl()
 		return nil
 	default:
