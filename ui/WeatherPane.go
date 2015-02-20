@@ -31,7 +31,7 @@ type WeatherPane struct {
 	getWeather  *time.Timer
 	tempTimeout *time.Timer
 	temperature bool
-	weather     *owm.CurrentWeatherData
+	weather     *owm.ForecastWeatherData
 	image       util.Image
 }
 
@@ -51,7 +51,7 @@ func NewWeatherPane(conn *ninja.Connection) *WeatherPane {
 	}
 
 	var err error
-	pane.weather, err = owm.NewCurrent("C")
+	pane.weather, err = owm.NewForecast("C")
 	if err != nil {
 		log.Warningf("Failed to load weather api:", err)
 		enableWeatherPane = false
@@ -90,16 +90,17 @@ func (p *WeatherPane) GetWeather() {
 
 	for {
 
-		p.weather.CurrentByCoordinates(
+		p.weather.DailyByCoordinates(
 			&owm.Coordinates{
 				Longitude: *p.site.Longitude,
 				Latitude:  *p.site.Latitude,
 			},
+			1,
 		)
 
-		if len(p.weather.Weather) > 0 {
+		if len(p.weather.List) > 0 {
 
-			filename := util.ResolveImagePath("weather/" + p.weather.Weather[0].Icon + ".png")
+			filename := util.ResolveImagePath("weather/" + p.weather.List[0].Weather[0].Icon + ".png")
 
 			if _, err := os.Stat(filename); os.IsNotExist(err) {
 				enableWeatherPane = false
@@ -134,17 +135,22 @@ func (p *WeatherPane) Render() (*image.RGBA, error) {
 	if p.temperature {
 		img := image.NewRGBA(image.Rect(0, 0, 16, 16))
 
-		var temp string
-		if p.weather.Sys.Country == "US" {
-			temp = fmt.Sprintf("%dF", int(p.weather.Main.Temp*(9/5)-459.67))
-		} else {
-			temp = fmt.Sprintf("%dC", int(p.weather.Main.Temp-273.15))
+		drawText := func(text string, col color.RGBA, top int) {
+			width := clock.Font.DrawString(img, 0, 8, text, color.Black)
+			start := int(16 - width - 2)
+
+			//spew.Dump("text", text, "width", width, "start", start)
+
+			O4b03b.Font.DrawString(img, start, top, text, col)
 		}
 
-		width := clock.Font.DrawString(img, 0, 0, temp, color.Black)
-		start := int((16 - width) / 2)
-
-		O4b03b.Font.DrawString(img, start, 5, temp, color.RGBA{255, 255, 255, 255})
+		if p.weather.City.Country == "US" || p.weather.City.Country == "United States of America" {
+			drawText(fmt.Sprintf("%dF", int(p.weather.List[0].Temp.Max*(9/5)-459.67)), color.RGBA{253, 151, 32, 255}, 1)
+			drawText(fmt.Sprintf("%dF", int(p.weather.List[0].Temp.Min*(9/5)-459.67)), color.RGBA{69, 175, 249, 255}, 8)
+		} else {
+			drawText(fmt.Sprintf("%dC", int(p.weather.List[0].Temp.Max*(9/5)-273.15)), color.RGBA{253, 151, 32, 255}, 1)
+			drawText(fmt.Sprintf("%dC", int(p.weather.List[0].Temp.Min*(9/5)-273.15)), color.RGBA{69, 175, 249, 255}, 8)
+		}
 
 		return img, nil
 	} else {
