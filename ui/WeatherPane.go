@@ -148,8 +148,8 @@ func (p *WeatherPane) Render() (*image.RGBA, error) {
 			drawText(fmt.Sprintf("%dF", int(p.weather.List[0].Temp.Max*(9/5)-459.67)), color.RGBA{253, 151, 32, 255}, 1)
 			drawText(fmt.Sprintf("%dF", int(p.weather.List[0].Temp.Min*(9/5)-459.67)), color.RGBA{69, 175, 249, 255}, 8)
 		} else {
-			drawText(fmt.Sprintf("%dC", int(p.weather.List[0].Temp.Max*(9/5)-273.15)), color.RGBA{253, 151, 32, 255}, 1)
-			drawText(fmt.Sprintf("%dC", int(p.weather.List[0].Temp.Min*(9/5)-273.15)), color.RGBA{69, 175, 249, 255}, 8)
+			drawText(fmt.Sprintf("%dC", int(p.weather.List[0].Temp.Max-273.15), color.RGBA{253, 151, 32, 255}, 1)
+			drawText(fmt.Sprintf("%dC", int(p.weather.List[0].Temp.Min-273.15), color.RGBA{69, 175, 249, 255}, 8)
 		}
 
 		return img, nil
