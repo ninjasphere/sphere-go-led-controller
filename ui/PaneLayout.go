@@ -233,6 +233,16 @@ func (l *PaneLayout) AddPane(pane Pane) {
 	l.panes = append(l.panes, pane)
 }
 
+func (l *PaneLayout) RemovePane(pane Pane) {
+	for i, p := range l.panes {
+		if p == pane {
+			l.panes[i] = nil
+			l.panes = append(l.panes[:i], l.panes[i+1:]...)
+			return
+		}
+	}
+}
+
 func (l *PaneLayout) IsDirty() bool {
 	return true
 }
