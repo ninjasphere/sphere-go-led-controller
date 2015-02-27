@@ -11,10 +11,13 @@ import (
 	"time"
 
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/goserial"
 )
 
 var log = logger.GetLogger("led-matrix")
+
+var ledPath = config.String("/dev/tty.ledmatrix", "led.tty")
 
 // Attempts this first, then falls back to half.
 const baudRate = 230400
@@ -36,7 +39,7 @@ func GetLEDConnectionAtRate(baudRate int) (io.ReadWriteCloser, error) {
 
 	log.Infof("Connecting to LED using baud rate: %d", baudRate)
 
-	c := &serial.Config{Name: "/dev/tty.ledmatrix", Baud: baudRate}
+	c := &serial.Config{Name: ledPath, Baud: baudRate}
 	s, err := serial.OpenPort(c)
 	if err != nil {
 		return nil, err
