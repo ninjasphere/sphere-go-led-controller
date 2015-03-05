@@ -1,4 +1,4 @@
-package ui
+package remote
 
 import (
 	"encoding/gob"
@@ -11,7 +11,7 @@ import (
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
-type RemotePane struct {
+type Pane struct {
 	Disconnected chan bool
 	log          *logger.Logger
 	conn         net.Conn
@@ -21,7 +21,8 @@ type RemotePane struct {
 }
 
 type Outgoing struct {
-	Gesture *gestic.GestureMessage
+	FrameRequested bool
+	Gesture        *gestic.GestureMessage
 }
 
 type Incoming struct {
@@ -29,13 +30,13 @@ type Incoming struct {
 	Err   error
 }
 
-func NewRemotePane(conn net.Conn) *RemotePane {
+func NewPane(conn net.Conn) *Pane {
 
 	spew.Dump("new Remote pane", conn)
 
-	pane := &RemotePane{
+	pane := &Pane{
 		conn:         conn,
-		log:          logger.GetLogger("RemotePane"),
+		log:          logger.GetLogger("Pane"),
 		Disconnected: make(chan bool, 1),
 		incoming:     gob.NewDecoder(conn),
 		outgoing:     gob.NewEncoder(conn),
@@ -45,23 +46,32 @@ func NewRemotePane(conn net.Conn) *RemotePane {
 	return pane
 }
 
-func (p *RemotePane) IsEnabled() bool {
+func (p *Pane) IsEnabled() bool {
 	return p.enabled
 }
 
-func (p *RemotePane) Gesture(gesture *gestic.GestureMessage) {
-	err := p.outgoing.Encode(gesture)
+func (p *Pane) Gesture(gesture *gestic.GestureMessage) {
+	if gesture.Gesture.Gesture != gestic.GestureNone || gesture.Touch.Active() || gesture.Tap.Active() || gesture.DoubleTap.Active() {
+		p.out(Outgoing{false, gesture})
+	}
+}
+
+func (p *Pane) out(msg Outgoing) {
+	err := p.outgoing.Encode(msg)
 	if err != nil {
 		if err == io.EOF {
 			p.enabled = false
 			p.Disconnected <- true
 		} else {
-			p.log.Fatalf("Failed to gob encode gesture: %s", err)
+			p.log.Fatalf("Failed to gob encode outgoing remote message: %s", err)
 		}
 	}
 }
 
-func (p *RemotePane) Render() (*image.RGBA, error) {
+func (p *Pane) Render() (*image.RGBA, error) {
+
+	p.out(Outgoing{true, nil})
+
 	var msg Incoming
 	err := p.incoming.Decode(&msg)
 
@@ -74,11 +84,11 @@ func (p *RemotePane) Render() (*image.RGBA, error) {
 		return nil, err
 	}
 
-	spew.Dump("Got incoming remote message", msg)
+	p.log.Debugf("Got incoming remote message")
 
 	return msg.Image, msg.Err
 }
 
-func (p *RemotePane) IsDirty() bool {
+func (p *Pane) IsDirty() bool {
 	return true
 }

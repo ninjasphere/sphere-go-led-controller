@@ -15,6 +15,7 @@ import (
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
 	ledmodel "github.com/ninjasphere/sphere-go-led-controller/model"
+	"github.com/ninjasphere/sphere-go-led-controller/remote"
 	"github.com/ninjasphere/sphere-go-led-controller/ui"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
@@ -356,11 +357,11 @@ func listenForRemotePanes(layout *ui.PaneLayout) error {
 			go func() {
 				log.Infof("Remote pane connected.")
 
-				pane := ui.NewRemotePane(conn)
-				layout.addPane(pane)
-				<-pane.disconnected
+				pane := remote.NewPane(conn)
+				layout.AddPane(pane)
+				<-pane.Disconnected
 				log.Infof("Remote pane disconnected.")
-				layout.removePane(pane)
+				layout.RemovePane(pane)
 			}()
 		}
 	}()
