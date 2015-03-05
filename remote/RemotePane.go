@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/go-ninja/logger"
 )
@@ -31,9 +30,6 @@ type Incoming struct {
 }
 
 func NewPane(conn net.Conn) *Pane {
-
-	spew.Dump("new Remote pane", conn)
-
 	pane := &Pane{
 		conn:         conn,
 		log:          logger.GetLogger("Pane"),

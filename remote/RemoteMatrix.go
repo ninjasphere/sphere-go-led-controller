@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/go-ninja/logger"
 )
@@ -29,8 +28,6 @@ type Matrix struct {
 }
 
 func NewMatrix(pane pane, conn net.Conn) *Matrix {
-
-	spew.Dump("new Remote matrix", conn)
 
 	matrix := &Matrix{
 		conn:         conn,
@@ -60,8 +57,6 @@ func (m *Matrix) start() {
 
 			log.Fatalf("Error communicating with led controller: %s", err)
 		}
-
-		//spew.Dump("Got incoming message", msg)
 
 		if msg.Gesture != nil {
 			m.pane.Gesture(msg.Gesture)
