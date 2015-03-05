@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"io"
+	"net"
 	"os"
 	"time"
 
@@ -13,11 +15,15 @@ import (
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
 	ledmodel "github.com/ninjasphere/sphere-go-led-controller/model"
+	"github.com/ninjasphere/sphere-go-led-controller/remote"
 	"github.com/ninjasphere/sphere-go-led-controller/ui"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
 var log = logger.GetLogger("sphere-go-led-controller")
+
+var enableRemotePanes = config.Bool(false, "led.remote.enable")
+var remotePort = config.Int(3115, "led.remote.port")
 
 var fps Tick = Tick{
 	name: "Pane FPS",
@@ -321,6 +327,12 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 
 	layout.AddPane(fanPane)
 
+	if enableRemotePanes {
+		if err := listenForRemotePanes(layout); err != nil {
+			log.Fatalf("Failed to start listening for remote panes: %s", err)
+		}
+	}
+
 	go func() {
 		<-wake
 	}()
@@ -328,6 +340,36 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 	go layout.Wake()
 
 	return layout
+}
+
+func listenForRemotePanes(layout *ui.PaneLayout) error {
+
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", remotePort))
+	if err != nil {
+		return err
+	}
+	log.Infof("Listening for remote panes on :%d", remotePort)
+	go func() {
+		defer listener.Close()
+
+		for {
+			conn, err := listener.Accept()
+			if err != nil {
+				log.Fatalf("Error accepting remote pane: %s", err)
+			}
+			go func() {
+				log.Infof("Remote pane connected.")
+
+				pane := remote.NewPane(conn)
+				layout.AddPane(pane)
+				<-pane.Disconnected
+				log.Infof("Remote pane disconnected.")
+				layout.RemovePane(pane)
+			}()
+		}
+	}()
+
+	return nil
 }
 
 type Tick struct {
