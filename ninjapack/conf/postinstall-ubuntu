@@ -1,2 +1,3 @@
+chmod 777 /data/icons
 stop ledcontroller || true
 start ledcontroller || true
