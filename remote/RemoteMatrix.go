@@ -4,7 +4,6 @@ import (
 	"encoding/gob"
 	"image"
 	"io"
-	"log"
 	"net"
 
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
@@ -52,10 +51,13 @@ func (m *Matrix) start() {
 
 		if err != nil {
 			if err == io.EOF {
-				log.Fatalf("Lost connection to led controller: %s", err)
+				m.log.Warningf("Lost connection to led controller: %s", err)
+			} else {
+				m.log.Errorf("Error communicating with led controller: %s", err)
 			}
 
-			log.Fatalf("Error communicating with led controller: %s", err)
+			m.Disconnected <- true
+			break
 		}
 
 		if msg.Gesture != nil {

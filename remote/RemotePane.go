@@ -59,7 +59,7 @@ func (p *Pane) out(msg Outgoing) {
 			p.enabled = false
 			p.Disconnected <- true
 		} else {
-			p.log.Fatalf("Failed to gob encode outgoing remote message: %s", err)
+			p.log.Errorf("Failed to gob encode outgoing remote message: %s", err)
 		}
 	}
 }
@@ -77,7 +77,7 @@ func (p *Pane) Render() (*image.RGBA, error) {
 			p.Disconnected <- true
 		}
 
-		return nil, err
+		return nil, nil
 	}
 
 	p.log.Debugf("Got incoming remote message")
