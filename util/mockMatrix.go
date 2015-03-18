@@ -62,10 +62,10 @@ func (m *mockMatrix) Write(p []byte) (n int, err error) {
 			switch m.state {
 			case stateCmd:
 				switch c {
-				case cmdWriteBuffer:
+				case stateData:
 					m.count = 0
 					m.state = stateData
-				case cmdSwapBuffers:
+				case stateSwap:
 					m.state = stateSwap
 				default:
 					old := *m
@@ -87,7 +87,7 @@ func (m *mockMatrix) Write(p []byte) (n int, err error) {
 				}
 			case stateSwap:
 				switch c {
-				case cmdWriteBuffer:
+				case stateData:
 					m.state = stateData
 					m.count = 0
 				default:

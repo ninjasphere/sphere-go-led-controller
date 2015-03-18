@@ -26,6 +26,10 @@ func (p *UpdateProgressPane) IsEnabled() bool {
 	return true
 }
 
+func (p *UpdateProgressPane) KeepAwake() bool {
+	return false
+}
+
 func (p *UpdateProgressPane) Gesture(gesture *gestic.GestureMessage) {
 }
 

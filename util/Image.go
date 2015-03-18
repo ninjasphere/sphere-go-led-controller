@@ -11,7 +11,11 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/ninjasphere/go-ninja/logger"
 )
+
+var log = logger.GetLogger("ui/util")
 
 // Approx. framerate of the display
 const fps = 30

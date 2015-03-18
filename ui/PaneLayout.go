@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
+	"github.com/ninjasphere/sphere-go-led-controller/util"
 
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
@@ -29,6 +30,8 @@ var forceAllPanes = config.Bool(false, "led.forceAllPanes")
 var logGestures = config.Bool(false, "led.gestures.log")
 var enableGestures = config.Bool(true, "led.gestures.enable")
 
+var failedPane = NewImagePane(util.ResolveImagePath("pairing-code-incorrect.gif"))
+
 type PaneLayout struct {
 	currentPane int
 	targetPane  int
@@ -37,6 +40,8 @@ type PaneLayout struct {
 
 	panTween *Tween
 	panLock  sync.Mutex
+
+	renderLock sync.Mutex
 
 	awake     bool
 	fadeTween *Tween
@@ -127,6 +132,7 @@ func NewPaneLayout(fakeGestures bool, conn *ninja.Connection) (*PaneLayout, chan
 
 type Pane interface {
 	IsEnabled() bool
+	KeepAwake() bool
 	Render() (*image.RGBA, error)
 	Gesture(*gestic.GestureMessage)
 }
@@ -212,7 +218,12 @@ func (l *PaneLayout) OnGesture(g *gestic.GestureMessage) {
 
 		// Don't send gestures to panes while we are panning
 		if l.panTween == nil {
-			l.panes[l.currentPane].Gesture(g)
+			pane := l.panes[l.currentPane]
+
+			// Sometimes they can disappear.
+			if pane != nil {
+				pane.Gesture(g)
+			}
 		}
 	}
 }
@@ -234,9 +245,17 @@ func (l *PaneLayout) AddPane(pane Pane) {
 }
 
 func (l *PaneLayout) RemovePane(pane Pane) {
+	l.renderLock.Lock()
+	defer l.renderLock.Unlock()
+
 	for i, p := range l.panes {
 		if p == pane {
 			l.panes[i] = nil
+			if i == l.currentPane && i == len(l.panes)-1 {
+				l.currentPane = l.findValidPane(1)
+				l.targetPane = l.currentPane
+			}
+
 			l.panes = append(l.panes[:i], l.panes[i+1:]...)
 			return
 		}
@@ -264,6 +283,9 @@ func (l *PaneLayout) Render() (*image.RGBA, chan (bool), error) {
 		return frame, l.wake, nil
 	}
 
+	l.renderLock.Lock()
+	defer l.renderLock.Unlock()
+
 	var position = 0
 	if l.panTween != nil {
 		var done bool
@@ -284,10 +306,20 @@ func (l *PaneLayout) Render() (*image.RGBA, chan (bool), error) {
 	currentImage, err := l.panes[l.currentPane].Render()
 
 	if err != nil {
-		return nil, nil, err
+		log.Warningf("Pane failed to render. Removing : %s", err)
+
+		l.renderLock.Unlock()
+		l.RemovePane(l.panes[l.currentPane])
+		l.renderLock.Lock()
+
+		currentImage, _ = l.panes[l.currentPane].Render()
 	}
 
 	draw.Draw(frame, frame.Bounds(), currentImage, image.Point{position, 0}, draw.Src)
+
+	if l.panes[l.currentPane].KeepAwake() {
+		l.lastGesture = time.Now() // Badly named now it's used for this purpose.
+	}
 
 	if position != 0 {
 		// We have the target pane to draw too
@@ -328,12 +360,7 @@ func (l *PaneLayout) Render() (*image.RGBA, chan (bool), error) {
 	return frame, nil, nil
 }
 
-func (l *PaneLayout) panBy(delta int) {
-	l.panLock.Lock()
-	defer l.panLock.Unlock()
-
-	l.currentPane = l.targetPane
-
+func (l *PaneLayout) findValidPane(delta int) int {
 	target := l.targetPane + delta
 	if target < 0 {
 		target = (len(l.panes) - 1)
@@ -371,6 +398,17 @@ func (l *PaneLayout) panBy(delta int) {
 			target = 0
 		}
 	}
+
+	return target
+}
+
+func (l *PaneLayout) panBy(delta int) {
+	l.panLock.Lock()
+	defer l.panLock.Unlock()
+
+	l.currentPane = l.targetPane
+
+	target := l.findValidPane(delta)
 
 	if l.currentPane == target {
 		l.log.Infof("Not panning. As we don't have anywhere else to pan to.")

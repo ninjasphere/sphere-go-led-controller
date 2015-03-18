@@ -61,6 +61,10 @@ func (p *CertPane) IsEnabled() bool {
 	return enableCertificationPane
 }
 
+func (p *CertPane) KeepAwake() bool {
+	return false
+}
+
 func (p *CertPane) Gesture(gesture *gestic.GestureMessage) {
 
 }

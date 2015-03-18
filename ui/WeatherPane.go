@@ -14,7 +14,6 @@ import (
 	"github.com/ninjasphere/go-ninja/model"
 	owm "github.com/ninjasphere/openweathermap"
 	"github.com/ninjasphere/sphere-go-led-controller/fonts/O4b03b"
-	"github.com/ninjasphere/sphere-go-led-controller/fonts/clock"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
@@ -122,6 +121,10 @@ func (p *WeatherPane) IsEnabled() bool {
 	return enableWeatherPane && p.weather.Unit != ""
 }
 
+func (p *WeatherPane) KeepAwake() bool {
+	return false
+}
+
 func (p *WeatherPane) Gesture(gesture *gestic.GestureMessage) {
 	if gesture.Tap.Active() {
 		log.Infof("Weather tap!")
@@ -136,7 +139,7 @@ func (p *WeatherPane) Render() (*image.RGBA, error) {
 		img := image.NewRGBA(image.Rect(0, 0, 16, 16))
 
 		drawText := func(text string, col color.RGBA, top int) {
-			width := clock.Font.DrawString(img, 0, 8, text, color.Black)
+			width := O4b03b.Font.DrawString(img, 0, 8, text, color.Black)
 			start := int(16 - width - 2)
 
 			//spew.Dump("text", text, "width", width, "start", start)

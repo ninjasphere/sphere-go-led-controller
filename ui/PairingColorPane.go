@@ -25,6 +25,10 @@ func (p *PairingColorPane) IsEnabled() bool {
 	return true
 }
 
+func (p *PairingColorPane) KeepAwake() bool {
+	return false
+}
+
 func (p *PairingColorPane) Gesture(gesture *gestic.GestureMessage) {
 }
 

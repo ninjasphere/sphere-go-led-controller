@@ -2,6 +2,7 @@ package remote
 
 import (
 	"encoding/gob"
+	"fmt"
 	"image"
 	"io"
 	"net"
@@ -12,6 +13,7 @@ import (
 
 type pane interface {
 	IsEnabled() bool
+	KeepAwake() bool
 	Render() (*image.RGBA, error)
 	Gesture(*gestic.GestureMessage)
 }
@@ -22,7 +24,6 @@ type Matrix struct {
 	conn         net.Conn
 	incoming     *gob.Decoder
 	outgoing     *gob.Encoder
-	enabled      bool
 	pane         pane
 }
 
@@ -34,13 +35,23 @@ func NewMatrix(pane pane, conn net.Conn) *Matrix {
 		Disconnected: make(chan bool, 1),
 		incoming:     gob.NewDecoder(conn),
 		outgoing:     gob.NewEncoder(conn),
-		enabled:      true,
 		pane:         pane,
 	}
+
+	defer func() {
+		matrix.outgoing.Encode(&Incoming{Err: fmt.Errorf("Goodbye!")})
+	}()
 
 	go matrix.start()
 
 	return matrix
+}
+
+func (m *Matrix) Close() {
+	if m.conn != nil {
+		m.conn.Close()
+	}
+	m.Disconnected <- true
 }
 
 func (m *Matrix) start() {
@@ -56,7 +67,7 @@ func (m *Matrix) start() {
 				m.log.Errorf("Error communicating with led controller: %s", err)
 			}
 
-			m.Disconnected <- true
+			m.Close()
 			break
 		}
 
@@ -65,11 +76,20 @@ func (m *Matrix) start() {
 		}
 
 		if msg.FrameRequested {
-			m.log.Debugf("Rendering pane...")
+			//m.log.Debugf("Rendering pane...")
 			img, err := m.pane.Render()
 
-			m.outgoing.Encode(&Incoming{img, err})
-			m.log.Debugf("Sent frame")
+			if err != nil {
+				m.log.Errorf("Pane returned an error: %s", err)
+			}
+
+			if err := m.outgoing.Encode(&Incoming{img, err, m.pane.KeepAwake()}); err != nil {
+				m.log.Errorf("Remote matrix error: %s. Disconnecting.", err)
+				m.Close()
+				break
+			}
+
+			//m.log.Debugf("Sent frame")
 		}
 	}
 }
