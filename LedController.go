@@ -22,7 +22,7 @@ import (
 
 var log = logger.GetLogger("sphere-go-led-controller")
 
-var enableRemotePanes = config.Bool(false, "led.remote.enable")
+var enableRemotePanes = config.Bool(false, "led.remote.enabled")
 var remotePort = config.Int(3115, "led.remote.port")
 
 var fps Tick = Tick{

@@ -185,6 +185,10 @@ func (p *LightPane) IsEnabled() bool {
 	return (p.onOffDevices != nil && len(*p.onOffDevices) > 0) || (p.airwheelDevices != nil && len(*p.airwheelDevices) > 0)
 }
 
+func (p *LightPane) KeepAwake() bool {
+	return false
+}
+
 func (p *LightPane) Gesture(gesture *gestic.GestureMessage) {
 
 	p.gestureSync.Lock()

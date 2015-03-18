@@ -75,6 +75,10 @@ func (p *ClockPane) IsEnabled() bool {
 	return enableClockPane
 }
 
+func (p *ClockPane) KeepAwake() bool {
+	return false
+}
+
 func (p *ClockPane) Gesture(gesture *gestic.GestureMessage) {
 	if !enableAlarm {
 		return

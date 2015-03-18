@@ -25,6 +25,10 @@ func (p *GesturePane) IsEnabled() bool {
 	return enableGesturePane
 }
 
+func (p *GesturePane) KeepAwake() bool {
+	return false
+}
+
 func (p *GesturePane) Gesture(gesture *gestic.GestureMessage) {
 	p.last = gesture
 }

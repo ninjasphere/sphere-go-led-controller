@@ -77,6 +77,10 @@ func (p *OnOffPane) IsEnabled() bool {
 	return len(p.devices) > 0
 }
 
+func (p *OnOffPane) KeepAwake() bool {
+	return false
+}
+
 func (p *OnOffPane) Gesture(gesture *gestic.GestureMessage) {
 	if p.ignoringGestures {
 		return

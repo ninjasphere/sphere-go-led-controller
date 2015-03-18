@@ -21,6 +21,10 @@ func (p *ImagePane) IsEnabled() bool {
 	return true
 }
 
+func (p *ImagePane) KeepAwake() bool {
+	return false
+}
+
 func (p *ImagePane) Gesture(gesture *gestic.GestureMessage) {
 }
 

@@ -2,21 +2,28 @@ package remote
 
 import (
 	"encoding/gob"
+	"fmt"
 	"image"
-	"io"
 	"net"
+	"time"
 
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
+	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
+// This is the maximum time we will wait for a frame before disconnecting the remote pane
+var remotePaneTimeout = config.Duration(time.Second, "led.remote.paneTimeout")
+
 type Pane struct {
-	Disconnected chan bool
-	log          *logger.Logger
-	conn         net.Conn
-	incoming     *gob.Decoder
-	outgoing     *gob.Encoder
-	enabled      bool
+	Disconnected   chan bool
+	log            *logger.Logger
+	conn           net.Conn
+	incoming       *gob.Decoder
+	outgoing       *gob.Encoder
+	enabled        bool
+	incomingFrames chan *Incoming
+	keepAwake      bool
 }
 
 type Outgoing struct {
@@ -25,19 +32,36 @@ type Outgoing struct {
 }
 
 type Incoming struct {
-	Image *image.RGBA
-	Err   error
+	Image     *image.RGBA
+	Err       error
+	KeepAwake bool
 }
 
 func NewPane(conn net.Conn) *Pane {
+
 	pane := &Pane{
-		conn:         conn,
-		log:          logger.GetLogger("Pane"),
-		Disconnected: make(chan bool, 1),
-		incoming:     gob.NewDecoder(conn),
-		outgoing:     gob.NewEncoder(conn),
-		enabled:      true,
+		conn:           conn,
+		log:            logger.GetLogger("Pane"),
+		Disconnected:   make(chan bool, 1),
+		incoming:       gob.NewDecoder(conn),
+		outgoing:       gob.NewEncoder(conn),
+		enabled:        true,
+		incomingFrames: make(chan *Incoming, 1),
 	}
+
+	// Ping the remote pane continuously so we can see if it's disappeared.
+	// This is kinda dumb.
+	go func() {
+		for {
+			if !pane.enabled {
+				break
+			}
+			pane.out(Outgoing{})
+			time.Sleep(time.Second)
+		}
+	}()
+
+	go pane.listen()
 
 	return pane
 }
@@ -46,43 +70,79 @@ func (p *Pane) IsEnabled() bool {
 	return p.enabled
 }
 
+func (p *Pane) KeepAwake() bool {
+	return p.keepAwake
+}
+
 func (p *Pane) Gesture(gesture *gestic.GestureMessage) {
+	if !p.enabled {
+		return
+	}
+
 	if gesture.Gesture.Gesture != gestic.GestureNone || gesture.Touch.Active() || gesture.Tap.Active() || gesture.DoubleTap.Active() {
 		p.out(Outgoing{false, gesture})
 	}
 }
 
-func (p *Pane) out(msg Outgoing) {
+func (p *Pane) out(msg Outgoing) error {
 	err := p.outgoing.Encode(msg)
 	if err != nil {
-		if err == io.EOF {
-			p.enabled = false
-			p.Disconnected <- true
-		} else {
-			p.log.Errorf("Failed to gob encode outgoing remote message: %s", err)
+		p.log.Errorf("Failed to gob encode outgoing remote message: %s", err)
+		p.Close()
+	}
+	return err
+}
+
+func (p *Pane) listen() {
+	for {
+		var msg Incoming
+		err := p.incoming.Decode(&msg)
+
+		p.log.Debugf("Got an incoming message")
+
+		if err != nil {
+			p.Close()
+			break
 		}
+
+		p.keepAwake = msg.KeepAwake
+
+		p.incomingFrames <- &msg
 	}
 }
 
 func (p *Pane) Render() (*image.RGBA, error) {
 
-	p.out(Outgoing{true, nil})
-
-	var msg Incoming
-	err := p.incoming.Decode(&msg)
-
-	if err != nil {
-		if err == io.EOF {
-			p.enabled = false
-			p.Disconnected <- true
-		}
-
-		return nil, nil
+	if !p.enabled {
+		return nil, fmt.Errorf("This remote pane has disconnected.")
 	}
 
-	p.log.Debugf("Got incoming remote message")
+	err := p.out(Outgoing{true, nil})
 
-	return msg.Image, msg.Err
+	if err != nil {
+		return nil, err
+	}
+
+	select {
+	case msg := <-p.incomingFrames:
+		p.log.Debugf("Got incoming remote message")
+
+		return msg.Image, msg.Err
+	case <-time.After(remotePaneTimeout):
+		p.log.Errorf("Remote pane timed out")
+		p.Close()
+
+		return nil, fmt.Errorf("Remote pane timed out")
+	}
+
+}
+
+func (p *Pane) Close() {
+	if p.enabled {
+		p.enabled = false
+		p.conn.Close()
+		p.Disconnected <- true
+	}
 }
 
 func (p *Pane) IsDirty() bool {

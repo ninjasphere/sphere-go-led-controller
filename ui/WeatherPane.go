@@ -14,7 +14,6 @@ import (
 	"github.com/ninjasphere/go-ninja/model"
 	owm "github.com/ninjasphere/openweathermap"
 	"github.com/ninjasphere/sphere-go-led-controller/fonts/O4b03b"
-	"github.com/ninjasphere/sphere-go-led-controller/fonts/clock"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
@@ -120,6 +119,10 @@ func (p *WeatherPane) GetWeather() {
 
 func (p *WeatherPane) IsEnabled() bool {
 	return enableWeatherPane && p.weather.Unit != ""
+}
+
+func (p *WeatherPane) KeepAwake() bool {
+	return false
 }
 
 func (p *WeatherPane) Gesture(gesture *gestic.GestureMessage) {

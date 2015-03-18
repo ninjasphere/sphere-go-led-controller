@@ -25,6 +25,10 @@ func (p *GameOfLifePane) IsEnabled() bool {
 	return enableGameOfLifePane
 }
 
+func (p *GameOfLifePane) KeepAwake() bool {
+	return false
+}
+
 func (p *GameOfLifePane) reset() {
 	p.life = NewLife(16, 16)
 }

@@ -100,6 +100,10 @@ func (p *ColorPane) IsEnabled() bool {
 	return true
 }
 
+func (p *ColorPane) KeepAwake() bool {
+	return false
+}
+
 func (p *ColorPane) Gesture(gesture *gestic.GestureMessage) {
 
 }
@@ -137,6 +141,10 @@ func NewTextScrollPane(text string) *TextScrollPane {
 
 func (p *TextScrollPane) IsEnabled() bool {
 	return true
+}
+
+func (p *TextScrollPane) KeepAwake() bool {
+	return false
 }
 
 func (p *TextScrollPane) Gesture(gesture *gestic.GestureMessage) {
@@ -196,6 +204,10 @@ func NewPairingCodePane(text string) *PairingCodePane {
 
 func (p *PairingCodePane) IsEnabled() bool {
 	return true
+}
+
+func (p *PairingCodePane) KeepAwake() bool {
+	return false
 }
 
 func (p *PairingCodePane) Gesture(gesture *gestic.GestureMessage) {
