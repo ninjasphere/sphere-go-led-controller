@@ -136,7 +136,7 @@ func (p *WeatherPane) Render() (*image.RGBA, error) {
 		img := image.NewRGBA(image.Rect(0, 0, 16, 16))
 
 		drawText := func(text string, col color.RGBA, top int) {
-			width := clock.Font.DrawString(img, 0, 8, text, color.Black)
+			width := O4b03b.Font.DrawString(img, 0, 8, text, color.Black)
 			start := int(16 - width - 2)
 
 			//spew.Dump("text", text, "width", width, "start", start)
