@@ -1,3 +1,5 @@
+// +build !darwin,!windows
+
 package util
 
 import (
@@ -10,20 +12,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/goserial"
 )
 
-var log = logger.GetLogger("led-matrix")
-
 var ledPath = config.String("/dev/tty.ledmatrix", "led.tty")
-
-// Attempts this first, then falls back to half.
-const baudRate = 230400
 
 var cmdWriteBuffer byte = 1
 var cmdSwapBuffers byte = 2
+
+// Attempts this first, then falls back to half.
+const baudRate = 230400
 
 // From https://diarmuid.ie/blog/post/pwm-exponential-led-fading-on-arduino-or-other-platforms
 var R = (255 * math.Log10(2)) / (math.Log10(255))
