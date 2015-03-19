@@ -98,7 +98,7 @@ func (p *Pane) listen() {
 		var msg Incoming
 		err := p.incoming.Decode(&msg)
 
-		p.log.Debugf("Got an incoming message")
+		//p.log.Debugf("Got an incoming message")
 
 		if err != nil {
 			p.Close()
@@ -125,7 +125,7 @@ func (p *Pane) Render() (*image.RGBA, error) {
 
 	select {
 	case msg := <-p.incomingFrames:
-		p.log.Debugf("Got incoming remote message")
+		//p.log.Debugf("Got incoming remote message")
 
 		return msg.Image, msg.Err
 	case <-time.After(remotePaneTimeout):
