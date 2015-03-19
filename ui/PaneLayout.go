@@ -254,6 +254,8 @@ func (l *PaneLayout) RemovePane(pane Pane) {
 			if i == l.currentPane && i == len(l.panes)-1 {
 				l.currentPane = l.findValidPane(1)
 				l.targetPane = l.currentPane
+			} else if i == l.targetPane && i == len(l.panes)-1 {
+				l.targetPane = l.findValidPane(1)
 			}
 
 			l.panes = append(l.panes[:i], l.panes[i+1:]...)
@@ -325,8 +327,15 @@ func (l *PaneLayout) Render() (*image.RGBA, chan (bool), error) {
 		// We have the target pane to draw too
 
 		targetImage, err := l.panes[l.targetPane].Render()
+
 		if err != nil {
-			return nil, nil, err
+			log.Warningf("Target pane failed to render. Removing : %s", err)
+
+			l.renderLock.Unlock()
+			l.RemovePane(l.panes[l.targetPane])
+			l.renderLock.Lock()
+
+			targetImage, _ = l.panes[l.targetPane].Render()
 		}
 
 		var targetPosition int
