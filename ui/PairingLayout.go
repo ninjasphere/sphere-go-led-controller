@@ -6,6 +6,7 @@ import (
 
 	"time"
 
+	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
@@ -23,7 +24,7 @@ func NewPairingLayout() *PairingLayout {
 		log:          logger.GetLogger("PaneLayout"),
 		progressPane: NewUpdateProgressPane(util.ResolveImagePath("update-progress.gif"), util.ResolveImagePath("update-loop.gif")),
 	}
-	layout.ShowIcon("spinner-blue.gif")
+	layout.ShowIcon(config.String("spinner-blue.gif", "led.loadingImage"))
 
 	/*	go func() {
 		time.Sleep(time.Second * 5)
