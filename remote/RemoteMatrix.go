@@ -18,6 +18,10 @@ type pane interface {
 	Gesture(*gestic.GestureMessage)
 }
 
+type lockable interface {
+	Locked() bool
+}
+
 type Matrix struct {
 	Disconnected chan bool
 	log          *logger.Logger
@@ -83,7 +87,12 @@ func (m *Matrix) start() {
 				m.log.Errorf("Pane returned an error: %s", err)
 			}
 
-			if err := m.outgoing.Encode(&Incoming{img, err, m.pane.KeepAwake()}); err != nil {
+			var locked = false
+			if lockablePane, ok := m.pane.(lockable); ok {
+				locked = lockablePane.Locked()
+			}
+
+			if err := m.outgoing.Encode(&Incoming{img, err, m.pane.KeepAwake(), locked}); err != nil {
 				m.log.Errorf("Remote matrix error: %s. Disconnecting.", err)
 				m.Close()
 				break

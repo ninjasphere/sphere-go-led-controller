@@ -24,6 +24,7 @@ type Pane struct {
 	enabled        bool
 	incomingFrames chan *Incoming
 	keepAwake      bool
+	locked         bool
 }
 
 type Outgoing struct {
@@ -35,6 +36,7 @@ type Incoming struct {
 	Image     *image.RGBA
 	Err       error
 	KeepAwake bool
+	Locked    bool
 }
 
 func NewPane(conn net.Conn) *Pane {
@@ -74,6 +76,10 @@ func (p *Pane) KeepAwake() bool {
 	return p.keepAwake
 }
 
+func (p *Pane) Locked() bool {
+	return p.locked
+}
+
 func (p *Pane) Gesture(gesture *gestic.GestureMessage) {
 	if !p.enabled {
 		return
@@ -106,6 +112,7 @@ func (p *Pane) listen() {
 		}
 
 		p.keepAwake = msg.KeepAwake
+		p.locked = msg.Locked
 
 		p.incomingFrames <- &msg
 	}

@@ -137,6 +137,10 @@ type Pane interface {
 	Gesture(*gestic.GestureMessage)
 }
 
+type lockable interface {
+	Locked() bool
+}
+
 func (l *PaneLayout) Wake() {
 
 	l.log.Infof("Waking up")
@@ -206,24 +210,35 @@ func (l *PaneLayout) OnGesture(g *gestic.GestureMessage) {
 	// Ignore all gestures while we're fading in or out
 	if l.fadeTween == nil {
 
-		if g.Gesture.Gesture == gestic.GestureFlickEastToWest {
-			l.panBy(1)
-			l.log.Infof("East to west, panning by 1")
+		pane := l.panes[l.currentPane]
+
+		if pane == nil {
+			return
 		}
 
-		if g.Gesture.Gesture == gestic.GestureFlickWestToEast {
-			l.panBy(-1)
-			l.log.Infof("West to east, panning by -1")
+		// Panes implementing lockable can force the pane layout to stay on them.
+		// This should only be done temporarily to force display some information,
+		// or to interact using east-to-west or west-to-east gestures
+		var locked = false
+		if lockablePane, ok := pane.(lockable); ok {
+			locked = lockablePane.Locked()
+		}
+
+		if !locked {
+			if g.Gesture.Gesture == gestic.GestureFlickEastToWest {
+				l.panBy(1)
+				l.log.Infof("East to west, panning by 1")
+			}
+
+			if g.Gesture.Gesture == gestic.GestureFlickWestToEast {
+				l.panBy(-1)
+				l.log.Infof("West to east, panning by -1")
+			}
 		}
 
 		// Don't send gestures to panes while we are panning
 		if l.panTween == nil {
-			pane := l.panes[l.currentPane]
-
-			// Sometimes they can disappear.
-			if pane != nil {
-				pane.Gesture(g)
-			}
+			pane.Gesture(g)
 		}
 	}
 }
