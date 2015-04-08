@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
-	"github.com/ninjasphere/sphere-go-led-controller/util"
 
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
@@ -29,8 +28,6 @@ var forceAllPanes = config.Bool(false, "led.forceAllPanes")
 
 var logGestures = config.Bool(false, "led.gestures.log")
 var enableGestures = config.Bool(true, "led.gestures.enable")
-
-var failedPane = NewImagePane(util.ResolveImagePath("pairing-code-incorrect.gif"))
 
 type PaneLayout struct {
 	currentPane int
