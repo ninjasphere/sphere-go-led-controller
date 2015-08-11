@@ -85,7 +85,7 @@ func (p *Pane) Gesture(gesture *gestic.GestureMessage) {
 		return
 	}
 
-	if gesture.Gesture.Gesture != gestic.GestureNone || gesture.Touch.Active() || gesture.Tap.Active() || gesture.DoubleTap.Active() {
+	if gesture.Gesture.Gesture != gestic.GestureNone || gesture.Touch.Active() || gesture.Tap.Active() || gesture.DoubleTap.Active() || gesture.AirWheel.Active {
 		p.out(Outgoing{false, gesture})
 	}
 }
