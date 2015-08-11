@@ -2,14 +2,16 @@ package remote
 
 import (
 	"encoding/gob"
-	"fmt"
 	"image"
 	"io"
 	"net"
+	"time"
 
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/go-ninja/logger"
 )
+
+var log = logger.GetLogger("remote")
 
 type pane interface {
 	IsEnabled() bool
@@ -31,22 +33,48 @@ type Matrix struct {
 	pane         pane
 }
 
-func NewMatrix(pane pane, conn net.Conn) *Matrix {
+func NewTCPMatrix(pane pane, host string) *Matrix {
 
-	matrix := &Matrix{
-		conn:         conn,
-		log:          logger.GetLogger("Matrix"),
-		Disconnected: make(chan bool, 1),
-		incoming:     gob.NewDecoder(conn),
-		outgoing:     gob.NewEncoder(conn),
-		pane:         pane,
-	}
+	matrix := NewMatrix(pane)
 
-	defer func() {
-		matrix.outgoing.Encode(&Incoming{Err: fmt.Errorf("Goodbye!")})
+	// Connect to the led controller remote pane interface
+
+	go func() {
+		for {
+			tcpAddr, err := net.ResolveTCPAddr("tcp", host)
+			if err != nil {
+				println("ResolveTCPAddr failed:", err.Error())
+			} else {
+
+				conn, err := net.DialTCP("tcp", nil, tcpAddr)
+				if err != nil {
+					log.Errorf("Dial failed: %s", err)
+				} else {
+
+					log.Infof("Connected")
+
+					go matrix.start(conn)
+
+					<-matrix.Disconnected
+
+					log.Infof("Disconnected")
+				}
+			}
+			log.Infof("Waiting to reconnect")
+			time.Sleep(time.Second / 2)
+		}
 	}()
 
-	go matrix.start()
+	return matrix
+}
+
+func NewMatrix(pane pane) *Matrix {
+
+	matrix := &Matrix{
+		log:          logger.GetLogger("Matrix"),
+		Disconnected: make(chan bool, 1),
+		pane:         pane,
+	}
 
 	return matrix
 }
@@ -58,7 +86,11 @@ func (m *Matrix) Close() {
 	m.Disconnected <- true
 }
 
-func (m *Matrix) start() {
+func (m *Matrix) start(conn net.Conn) {
+
+	m.conn = conn
+	m.incoming = gob.NewDecoder(m.conn)
+	m.outgoing = gob.NewEncoder(m.conn)
 
 	for {
 		var msg Outgoing
