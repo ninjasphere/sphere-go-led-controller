@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"image/draw"
 	"image/gif"
+	"image/jpeg"
 	"image/png"
 	"math"
 	"os"
@@ -38,6 +39,10 @@ type SingleImage struct {
 
 func NewSingleImage(frame *image.RGBA) *SingleImage {
 	return &SingleImage{frame}
+}
+
+func NewSingleImageConvert(frame image.Image) *SingleImage {
+	return &SingleImage{toRGBA(frame)}
 }
 
 func (i *SingleImage) GetNextFrame() *image.RGBA {
@@ -181,6 +186,8 @@ func LoadImage(src string) Image {
 		return LoadGif(src)
 	} else if strings.Contains(srcLower, ".png") {
 		return LoadPng(src)
+	} else if strings.Contains(srcLower, ".jpg") {
+		return LoadJpeg(src)
 	} else {
 		log.HandleError(fmt.Errorf(src), "Unknown image format")
 	}
@@ -205,6 +212,24 @@ func LoadPng(src string) Image {
 	}
 }
 
+func LoadJpeg(src string) Image {
+
+	file, err := os.Open(src)
+
+	if err != nil {
+		log.Fatalf("Could not open jpeg '%s' : %s", src, err)
+	}
+
+	img, err := jpeg.Decode(file)
+	if err != nil {
+		log.Fatalf("JPG decoding failed on image '%s' : %s", src, err)
+	}
+
+	return &SingleImage{
+		frame: toRGBA(img),
+	}
+}
+
 func LoadGif(src string) *AnimatedImage {
 
 	file, err := os.Open(src)
@@ -220,8 +245,10 @@ func LoadGif(src string) *AnimatedImage {
 
 	var frames = []*image.RGBA{}
 
+	last := image.NewRGBA(image.Rect(0, 0, 16, 16))
 	for _, frame := range img.Image {
-		frames = append(frames, toRGBA(frame))
+		last = palettedToRGBA(last, frame)
+		frames = append(frames, last)
 	}
 
 	loops := img.LoopCount
@@ -230,7 +257,7 @@ func LoadGif(src string) *AnimatedImage {
 	} else if loops == -1 {
 		loops = 0
 	}
-
+	
 	return &AnimatedImage{
 		frames:          frames,
 		delays:          img.Delay,
@@ -243,7 +270,16 @@ func LoadGif(src string) *AnimatedImage {
 func toRGBA(in image.Image) *image.RGBA {
 	bounds := in.Bounds()
 	out := image.NewRGBA(image.Rect(0, 0, bounds.Dx(), bounds.Dy()))
-	draw.Draw(out, out.Bounds(), in, bounds.Min, draw.Over)
+	draw.Draw(out, out.Bounds(), in, bounds.Min, draw.Src)
+	return out
+}
+
+func palettedToRGBA(last *image.RGBA, in *image.Paletted) *image.RGBA {
+	out := image.NewRGBA(image.Rect(0, 0, 16, 16))
+
+	draw.Draw(out, out.Bounds(), last, last.Rect.Min, draw.Src)
+	draw.Draw(out, in.Bounds(), in, in.Rect.Min, draw.Over)
+
 	return out
 }
 
