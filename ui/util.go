@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
@@ -99,6 +100,10 @@ func fetchAll() error {
 	return nil
 }
 
+func StartSearchTasks(c *ninja.Connection) {
+	startSearchTasks(c)
+}
+
 func startSearchTasks(c *ninja.Connection) {
 	conn = c
 	thingModel = conn.GetServiceClient("$home/services/ThingModel")
@@ -150,6 +155,10 @@ func startSearchTasks(c *ninja.Connection) {
 	}()
 }
 
+func GetChannelServicesContinuous(thingType string, protocol string, filter func(thing *model.Thing) bool, cb func([]*ninja.ServiceClient, error)) {
+	getChannelServicesContinuous(thingType, protocol, filter, cb)
+}
+
 func getChannelServicesContinuous(thingType string, protocol string, filter func(thing *model.Thing) bool, cb func([]*ninja.ServiceClient, error)) {
 
 	if filter == nil {
@@ -171,6 +180,8 @@ func getChannelServices(thingType string, protocol string, filter func(thing *mo
 
 	for _, thing := range allThings {
 		if thing.Type == thingType {
+
+			spew.Dump("Found the right thing", thing, "looking for protocol", protocol)
 
 			// Handle more than one channel with same protocol
 			channel := getChannel(&thing, protocol)
