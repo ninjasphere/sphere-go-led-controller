@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
+	//	"github.com/davecgh/go-spew/spew"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
@@ -181,7 +181,7 @@ func getChannelServices(thingType string, protocol string, filter func(thing *mo
 	for _, thing := range allThings {
 		if thing.Type == thingType {
 
-			spew.Dump("Found the right thing", thing, "looking for protocol", protocol)
+			// spew.Dump("Found the right thing", thing, "looking for protocol", protocol)
 
 			// Handle more than one channel with same protocol
 			channel := getChannel(&thing, protocol)
