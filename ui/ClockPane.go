@@ -123,7 +123,7 @@ func (p *ClockPane) Render() (*image.RGBA, error) {
 	var text string
 	if p.alarm != nil {
 		duration := p.alarm.Sub(time.Now())
-		text = fmt.Sprintf("%d:%0d", int(duration.Minutes()), int(duration.Seconds())-(int(duration.Minutes())*60))
+		text = fmt.Sprintf("%d:%02d", int(duration.Minutes()), int(duration.Seconds())-(int(duration.Minutes())*60))
 	} else {
 
 		t := time.Now()
