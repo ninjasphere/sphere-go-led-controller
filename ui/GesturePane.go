@@ -4,7 +4,7 @@ import (
 	"image"
 	"math"
 
-	"github.com/ninjasphere/draw2d"
+	draw2d "github.com/ninjasphere/draw2d/draw2dimg"
 
 	"github.com/lucasb-eyer/go-colorful"
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"

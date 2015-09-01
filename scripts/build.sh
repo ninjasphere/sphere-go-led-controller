@@ -32,6 +32,7 @@ fi
 # move the working path and build
 cd .gopath/src/github.com/${OWNER}/${PROJECT_NAME}
 go get -d -v ./...
+cd $GOPATH/src/github.com/golang/freetype && git checkout 5193f9f147f37ac3b321f80eb7798c9ca74be908
 
 # building the master branch on ci
 if [ "$BUILDBOX_BRANCH" = "master" ]; then
