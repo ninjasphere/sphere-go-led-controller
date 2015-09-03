@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/ninjasphere/go-ninja/config"
-	"github.com/tarm/serial"
+	"github.com/ninjasphere/goserial"
 )
 
 var ledPath = config.String("/dev/tty.ledmatrix", "led.tty")
