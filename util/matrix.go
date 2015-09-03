@@ -1,14 +1,14 @@
+// +build !darwin,!windows
+
 package util
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"image"
 	"io"
 	"math"
 	"os/exec"
-	"runtime"
 	"strings"
 	"time"
 
@@ -78,27 +78,16 @@ func GetLEDConnectionAtRate(baudRate int) (io.ReadWriteCloser, error) {
 
 func GetLEDConnection() (io.ReadWriteCloser, error) {
 
-	if runtime.GOOS == "linux" {
-		return getLEDConnectionLinux()
-	}
-
-	return newMockMatrix(), nil
-}
-
-func getLEDConnectionLinux() (io.ReadWriteCloser, error) {
-
-	resetLedMatrix, resetErr := exec.LookPath("reset-led-matrix")
-	if resetErr != nil {
-		log.Errorf("Could not find reset led matrix command: %s", resetErr)
+	resetLedMatrix, err := exec.LookPath("reset-led-matrix")
+	if err != nil {
+		return nil, err
 	}
 
 	for _, d := range []int{1, 2, 4} {
 		for _, baud := range []int{baudRate, baudRate / 2} {
 
-			if resetErr == nil {
-				cmd := exec.Command(resetLedMatrix)
-				_, _ = cmd.Output()
-			}
+			cmd := exec.Command(resetLedMatrix)
+			_, err = cmd.Output()
 
 			s, err := GetLEDConnectionAtRate(baud)
 			if err == nil {
@@ -111,7 +100,8 @@ func getLEDConnectionLinux() (io.ReadWriteCloser, error) {
 		}
 	}
 
-	return nil, errors.New("failed to connect to LED matrix - falling back to mock a matrix connection.")
+	log.Errorf("failed to connect to LED matrix - falling back to mock a matrix connection.")
+	return newMockMatrix(), nil
 }
 
 func ConvertImage(image *image.RGBA) []byte {
