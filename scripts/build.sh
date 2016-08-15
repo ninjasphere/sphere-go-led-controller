@@ -33,6 +33,10 @@ fi
 cd .gopath/src/github.com/${OWNER}/${PROJECT_NAME}
 go get -d -v ./...
 
+# fixup go dependencies
+GOOS= GOARCH= go get github.com/tools/godep
+PATH=${GOPATH}/bin:${PATH} godep restore 
+
 # building the master branch on ci
 if [ "$BUILDBOX_BRANCH" = "master" ]; then
 	go build -ldflags "-X main.BugsnagKey ${BUGSNAG_KEY}" -tags release -o ./bin/${BIN_NAME}
