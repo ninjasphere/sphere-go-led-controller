@@ -48,8 +48,6 @@ type request struct {
 	cb        func([]*ninja.ServiceClient, error)
 }
 
-var foundLocation = make(chan bool)
-
 var roomID *string
 
 func runTasks() {
@@ -62,10 +60,6 @@ func runTasks() {
 					// Got it.
 					log.Infof("Got this sphere's location: %s", thing.Location)
 					roomID = thing.Location
-					select {
-					case foundLocation <- true:
-					default:
-					}
 
 					break
 				}
@@ -134,10 +128,6 @@ func startSearchTasks(c *ninja.Connection) {
 			time.Sleep(time.Second * 3)
 		}
 	}()
-
-	if sameRoomOnly {
-		<-foundLocation
-	}
 
 	thingModel.OnEvent("created", setDirty)
 	thingModel.OnEvent("updated", setDirty)
