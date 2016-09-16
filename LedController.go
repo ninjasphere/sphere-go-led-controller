@@ -332,7 +332,7 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 	}, conn, "aircon")
 	layout.AddPane(airconPane)
 
-	layout.AddPane(ui.NewSystemPane())
+	layout.AddPane(ui.NewSystemPane(conn))
 
 	if enableRemotePanes {
 		if err := listenForRemotePanes(layout); err != nil {

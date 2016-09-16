@@ -1,11 +1,14 @@
 package ui
 
 import (
+	"encoding/json"
 	"image"
 	"image/color"
 
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
+	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
+	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/sphere-go-led-controller/fonts/O4b03b"
 )
 
@@ -21,15 +24,44 @@ var colors = map[string]*color.RGBA{
 }
 
 type SystemPane struct {
+	log   *logger.Logger
 	code  string
 	color string
 }
 
-func NewSystemPane() Pane {
-	return &SystemPane{
+type StatusEvent struct {
+	Code    string `json:"code"`
+	Color   string `jsom:"color"`
+	Message string `json:"message"`
+}
+
+func NewSystemPane(conn *ninja.Connection) Pane {
+
+	pane := &SystemPane{
+		log:   logger.GetLogger("SystemPane"),
 		code:  "0000",
 		color: "green",
 	}
+
+	status := conn.GetServiceClient("$device/:deviceId/component/:componentId")
+	status.OnEvent("status", func(statusEvent *StatusEvent, values map[string]string) bool {
+		if deviceId, ok := values["deviceId"]; !ok {
+			return true
+		} else if deviceId != config.Serial() {
+			return true
+		} else {
+			params, _ := json.Marshal(statusEvent)
+			pane.log.Infof("$device/%s/component/%s - %s", deviceId, values["componentId"], params)
+			pane.code = statusEvent.Code
+			pane.color = statusEvent.Color
+			if pane.color == "" {
+				pane.color = "green"
+			}
+			return true
+		}
+	})
+
+	return pane
 }
 
 func (p *SystemPane) IsEnabled() bool {
