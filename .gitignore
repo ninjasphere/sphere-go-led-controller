@@ -8,3 +8,5 @@ pkg/
 .DS_Store
 ./sphere-go-led-controller
 vendor/
+.gopath-cli/*
+.staging-cli
