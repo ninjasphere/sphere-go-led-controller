@@ -183,7 +183,7 @@ func (c *LedController) EnableControl() error {
 	return nil
 }
 
-func (c *LedController) DisableControl() error {
+func (c *LedController) disableControl() error {
 	log.Infof("Disabling control. Currently enabled? %t", c.controlEnabled)
 
 	c.DisplayIcon(&ledmodel.IconRequest{
@@ -192,6 +192,11 @@ func (c *LedController) DisableControl() error {
 
 	c.controlEnabled = false
 	c.controlRequested = false
+	return nil
+}
+
+func (c *LedController) DisableControl() error {
+	c.disableControl()
 	c.gotCommand()
 	return nil
 }
@@ -280,6 +285,7 @@ func (c *LedController) DisplayResetMode(m *ledmodel.ResetMode) error {
 }
 
 func (c *LedController) DisplayUpdateProgress(p *ledmodel.DisplayUpdateProgress) error {
+	c.disableControl() // copes with situation that homecloud restarts before update is finished
 	c.pairingLayout.ShowUpdateProgress(p.Progress)
 
 	return nil
