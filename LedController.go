@@ -338,6 +338,14 @@ func getPaneLayout(conn *ninja.Connection) *ui.PaneLayout {
 	}, conn, "aircon")
 	layout.AddPane(airconPane)
 
+	scenePane := ui.NewOnOffPane(util.ResolveImagePath("scene-off.png"), util.ResolveImagePath("scene-on.gif"), func(state bool) {
+		log.Debugf("Scene state: %t", state)
+	}, conn, "scene")
+	layout.AddPane(scenePane)
+
+	batteryPane := ui.NewBatteryPane(conn)
+	layout.AddPane(batteryPane)
+
 	layout.AddPane(ui.NewSystemPane(conn))
 
 	if enableRemotePanes {
