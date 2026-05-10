@@ -1,166 +1,170 @@
 package ui
 
 import (
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
-	"os"
+	"sync/atomic"
 	"time"
 
-	"github.com/bugsnag/bugsnag-go"
 	"github.com/ninjasphere/gestic-tools/go-gestic-sdk"
 	"github.com/ninjasphere/go-ninja/api"
-	"github.com/ninjasphere/go-ninja/config"
-	"github.com/ninjasphere/go-ninja/model"
-	owm "github.com/ninjasphere/openweathermap"
+	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/sphere-go-led-controller/fonts/O4b03b"
 	"github.com/ninjasphere/sphere-go-led-controller/util"
 )
 
-var enableWeatherPane = config.MustBool("led.weather.enabled")
-var weatherUpdateInterval = config.MustDuration("led.weather.updateInterval")
-var temperatureDisplayTime = config.Duration(time.Second*5, "led.weather.temperatureDisplayTime")
+const weatherDetailDuration = 5 * time.Second
 
-var globalSite *model.Site
+// timezone is referenced by ClockPane. Originally populated by the old
+// site-model lookup that this pane no longer does — we leave it at nil so
+// ClockPane falls back to the system local time, which is correct on both
+// spheres' OS clocks.
 var timezone *time.Location
 
+// WeatherState mirrors the payload of "state" events on the "weather" channel
+// emitted by ha-bridge (current condition + today's hi/lo + day-or-night).
+type WeatherState struct {
+	Condition string  `json:"condition"`
+	TempC     float64 `json:"temp_c"`
+	HighC     float64 `json:"temp_high_c"`
+	LowC      float64 `json:"temp_low_c"`
+	IsDay     bool    `json:"is_day"`
+}
+
+// HA condition string → OWM-style icon code (sans d/n suffix). The icon assets
+// in `images/weather/{01..50}{d|n}.png` are kept verbatim from upstream — we
+// only changed the data source.
+var weatherIconMap = map[string]string{
+	"sunny":           "01",
+	"clear-night":     "01",
+	"partlycloudy":    "02",
+	"cloudy":          "04",
+	"rainy":           "10",
+	"pouring":         "09",
+	"lightning":       "11",
+	"lightning-rainy": "11",
+	"snowy":           "13",
+	"snowy-rainy":     "13",
+	"hail":            "13",
+	"fog":             "50",
+	"windy":           "04",
+	"windy-variant":   "04",
+	"exceptional":     "11",
+}
+
 type WeatherPane struct {
-	siteModel   *ninja.ServiceClient
-	site        *model.Site
-	getWeather  *time.Timer
-	tempTimeout *time.Timer
-	temperature bool
-	weather     *owm.ForecastWeatherData
-	image       util.Image
+	log     *logger.Logger
+	devices []*ninja.ServiceClient
+
+	state WeatherState
+	have  bool
+
+	image    util.Image
+	imageKey string // current "01d" / "10n" etc — used to skip reloads when state spam doesn't change the icon
+
+	detailUntil      time.Time
+	ignoringGestures atomic.Bool
 }
 
 func NewWeatherPane(conn *ninja.Connection) *WeatherPane {
-
+	log := logger.GetLogger("WeatherPane")
 	pane := &WeatherPane{
-		siteModel: conn.GetServiceClient("$home/services/SiteModel"),
-		image:     util.LoadImage(util.ResolveImagePath("weather/loading.gif")),
+		log:   log,
+		image: util.LoadImage(util.ResolveImagePath("weather/loading.gif")),
 	}
 
-	pane.tempTimeout = time.AfterFunc(0, func() {
-		pane.temperature = false
+	listening := map[string]bool{}
+	getChannelServicesContinuous("weather", "weather", nil, func(clients []*ninja.ServiceClient, err error) {
+		if err != nil {
+			log.Infof("Failed to update weather devices: %s", err)
+			return
+		}
+		log.Infof("WeatherPane got %d weather devices", len(clients))
+		pane.devices = clients
+		for _, device := range clients {
+			if listening[device.Topic] {
+				continue
+			}
+			listening[device.Topic] = true
+			device.OnEvent("state", func(params *json.RawMessage, _ map[string]string) bool {
+				var st WeatherState
+				if err := json.Unmarshal(*params, &st); err != nil {
+					log.Warningf("weather state unmarshal: %s", err)
+					return true
+				}
+				pane.state = st
+				pane.have = true
+				pane.refreshIcon()
+				return true
+			})
+		}
 	})
-
-	if !enableWeatherPane {
-		return pane
-	}
-
-	var err error
-	pane.weather, err = owm.NewForecast("C")
-	if err != nil {
-		log.Warningf("Failed to load weather api:", err)
-		enableWeatherPane = false
-	} else {
-		go pane.GetWeather()
-	}
 
 	return pane
 }
 
-func (p *WeatherPane) GetWeather() {
-
-	enableWeatherPane = false
-
-	for {
-		site := &model.Site{}
-		err := p.siteModel.Call("fetch", config.MustString("siteId"), site, time.Second*5)
-
-		if err == nil && (site.Longitude != nil || site.Latitude != nil) {
-			p.site = site
-			globalSite = site
-
-			if site.TimeZoneID != nil {
-				if timezone, err = time.LoadLocation(*site.TimeZoneID); err != nil {
-					log.Warningf("error while setting timezone (%s): %s", *site.TimeZoneID, err)
-					timezone, _ = time.LoadLocation("Local")
-				}
-			}
-			break
-		}
-
-		log.Infof("Failed to get site, or site has no location.")
-
-		time.Sleep(time.Second * 2)
+// refreshIcon picks the right asset for current condition + day/night and
+// reloads only when the choice actually changes.
+func (p *WeatherPane) refreshIcon() {
+	code, ok := weatherIconMap[p.state.Condition]
+	if !ok {
+		code = "01" // unknown condition → fall back to clear
 	}
-
-	for {
-
-		p.weather.DailyByCoordinates(
-			&owm.Coordinates{
-				Longitude: *p.site.Longitude,
-				Latitude:  *p.site.Latitude,
-			},
-			1,
-		)
-
-		if len(p.weather.List) > 0 {
-
-			filename := util.ResolveImagePath("weather/" + p.weather.List[0].Weather[0].Icon + ".png")
-
-			if _, err := os.Stat(filename); os.IsNotExist(err) {
-				enableWeatherPane = false
-				fmt.Printf("Couldn't load image for weather: %s", filename)
-				bugsnag.Notify(fmt.Errorf("Unknown weather icon: %s", filename), p.weather)
-			} else {
-				p.image = util.LoadImage(filename)
-				enableWeatherPane = true
-			}
-		}
-
-		time.Sleep(weatherUpdateInterval)
-
+	suffix := "d"
+	if p.state.Condition == "clear-night" || !p.state.IsDay {
+		suffix = "n"
 	}
-
+	key := code + suffix
+	if key == p.imageKey {
+		return
+	}
+	p.imageKey = key
+	p.image = util.LoadImage(util.ResolveImagePath("weather/" + key + ".png"))
 }
 
-func (p *WeatherPane) IsEnabled() bool {
-	return enableWeatherPane && p.weather.Unit != ""
-}
-
-func (p *WeatherPane) KeepAwake() bool {
-	return false
-}
+func (p *WeatherPane) IsEnabled() bool { return len(p.devices) > 0 && p.have }
+func (p *WeatherPane) KeepAwake() bool { return false }
+func (p *WeatherPane) IsDirty() bool   { return true }
 
 func (p *WeatherPane) Gesture(gesture *gestic.GestureMessage) {
+	if p.ignoringGestures.Load() {
+		return
+	}
 	if gesture.Tap.Active() {
-		log.Infof("Weather tap!")
-
-		p.temperature = true
-		p.tempTimeout.Reset(temperatureDisplayTime)
+		p.log.Infof("Tap! showing weather detail")
+		p.detailUntil = time.Now().Add(weatherDetailDuration)
+		p.ignoringGestures.Store(true)
+		go func() {
+			time.Sleep(300 * time.Millisecond)
+			p.ignoringGestures.Store(false)
+		}()
 	}
 }
 
 func (p *WeatherPane) Render() (*image.RGBA, error) {
-	if p.temperature {
-		img := image.NewRGBA(image.Rect(0, 0, 16, 16))
-
-		drawText := func(text string, col color.RGBA, top int) {
-			width := O4b03b.Font.DrawString(img, 0, 8, text, color.Black)
-			start := int(16 - width - 2)
-
-			//spew.Dump("text", text, "width", width, "start", start)
-
-			O4b03b.Font.DrawString(img, start, top, text, col)
-		}
-
-		if p.weather.City.Country == "US" || p.weather.City.Country == "United States of America" {
-			drawText(fmt.Sprintf("%dF", int(p.weather.List[0].Temp.Max*(9.0/5)-459.67)), color.RGBA{253, 151, 32, 255}, 1)
-			drawText(fmt.Sprintf("%dF", int(p.weather.List[0].Temp.Min*(9.0/5)-459.67)), color.RGBA{69, 175, 249, 255}, 8)
-		} else {
-			drawText(fmt.Sprintf("%dC", int(p.weather.List[0].Temp.Max-273.15)), color.RGBA{253, 151, 32, 255}, 1)
-			drawText(fmt.Sprintf("%dC", int(p.weather.List[0].Temp.Min-273.15)), color.RGBA{69, 175, 249, 255}, 8)
-		}
-
-		return img, nil
-	} else {
+	if !p.have {
 		return p.image.GetNextFrame(), nil
 	}
+	if time.Now().Before(p.detailUntil) {
+		img := image.NewRGBA(image.Rect(0, 0, 16, 16))
+		p.renderDetail(img)
+		return img, nil
+	}
+	return p.image.GetNextFrame(), nil
 }
 
-func (p *WeatherPane) IsDirty() bool {
-	return true
+func (p *WeatherPane) renderDetail(img *image.RGBA) {
+	drawText := func(text string, col color.RGBA, top int) {
+		// Measure on a throwaway canvas so we can right-align.
+		width := O4b03b.Font.DrawString(image.NewRGBA(image.Rect(0, 0, 16, 16)), 0, 0, text, color.Black)
+		start := 16 - width - 2
+		if start < 0 {
+			start = 0
+		}
+		O4b03b.Font.DrawString(img, start, top, text, col)
+	}
+	drawText(fmt.Sprintf("%dC", int(p.state.HighC+0.5)), color.RGBA{253, 151, 32, 255}, 1)
+	drawText(fmt.Sprintf("%dC", int(p.state.LowC+0.5)), color.RGBA{69, 175, 249, 255}, 8)
 }
